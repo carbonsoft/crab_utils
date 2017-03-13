@@ -45,7 +45,5 @@ git_update
 create_symlink
 configure_mc
 
-ln -fs /opt/crab/crab_utils/tmplt/crab.cron /etc/cron.d/crab.cron
-
 echo '### crab_install: SUCCESS'
 exit 0
