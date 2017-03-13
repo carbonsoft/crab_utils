@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -eu
+cp -a /opt/crab/test/test-crab_indent.white /tmp/test-crab_indent.white.$$
+
+failed=FALSE
+/opt/crab/crab_indent /tmp/test-crab_indent.white.$$
+diff -U 10 /opt/crab/test/test-crab_indent.white /tmp/test-crab_indent.white.$$ || failed=TRUE
+rm -f /tmp/test-crab_indent.white.$$
+
+if [ $failed = TRUE ]; then
+	echo TEST $0 /opt/crab/test/test-crab_indent.white [ FAILED ]
+	exit 1
+fi
+
+echo SUCCESS
+exit 0

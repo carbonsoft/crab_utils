@@ -1,0 +1,31 @@
+#!/bin/bash
+
+set -eu
+
+# fixme
+# echo 0 > /tmp/.carbon_help/lastupdate
+mkdir -p /tmp/.carbon_help
+if [ ! -s "$HOME/.carbon_help.urls" ]; then
+	echo 'http://www.opencarbon.ru/html/utils/carbon_help.txt' > "$HOME/.carbon_help.urls"
+fi
+
+if [ ! -s /tmp/.carbon_help/lastupdate ]; then
+	echo 0 > /tmp/.carbon_help/lastupdate
+fi
+if [ $((`date +%s`-$(</tmp/.carbon_help/lastupdate))) -gt $((3600*24)) ]; then
+	for url in $(<$HOME/.carbon_help.urls); do
+		wget $url -O /tmp/.carbon_help/${url//\//_} &>/dev/null
+	done
+	date +%s > /tmp/.carbon_help/lastupdate
+fi
+
+for url in $(<$HOME/.carbon_help.urls); do
+	if [ "${2:-}" != "" ]; then
+		grep -i "#$1" /tmp/.carbon_help/${url//\//_} | grep -i "${2:-.}" | sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/' | sed 's/^#\w*\s//'
+	else
+		grep -i "#$1" /tmp/.carbon_help/${url//\//_} | sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/'
+	fi
+done
+
+# echo SUCCESS
+exit 0

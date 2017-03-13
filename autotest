@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -eu
+err=0
+
+for test in /opt/crab/test/test-*; do
+	[ ! -x $test ] && continue
+	echo
+	echo -n "TEST ${test}: "
+	$test || err=$((err+1))
+done
+
+/opt/crab/crab_syntax /opt/crab/ || err=$((err+1))
+
+[ $err != 0 ] && exit 1
+
+echo '### autotest SUCCESS'
+exit 0

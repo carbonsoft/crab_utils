@@ -1,0 +1,60 @@
+set -euEo pipefail
+__ARGV=
+
+# revers argv
+for __ARG in ${BASH_ARGV[@]:1}; do
+	__ARGV="$__ARG $__ARGV"
+done
+
+__BASH_SOURCE=${BASH_SOURCE[1]}
+
+[ "${__SILENT:-}" = "" ] && echo "START ${__BASH_SOURCE} $__ARGV" >&2
+
+trap '__exit $? CMD=${BASH_COMMAND// /%%%%%} $@' ERR
+__exit(){
+	set +eu
+	local STATUS=$1
+	local CMD=
+	local ARGV=
+	shift
+	if [[ "${1}" == "CMD="* ]]; then
+		CMD=${1//CMD=/}
+		CMD=${CMD//%%%%%/ }
+		shift
+		ARGV="$@"
+	else
+		echo ""
+		echo "__exit $STATUS $@"
+		CMD="__exit"
+		ARGV=
+	fi
+	echo ""
+	echo "ERROR_PROG=$__BASH_SOURCE  $__ARGV ERROR_STACK=${BASH_SOURCE[@]:1}"
+	echo "ERROR_SOURCE=${BASH_SOURCE[@]:1:1} $ARGV ERROR_CMD=\"${CMD}\" ERROR_STATUS=$STATUS LINENO=${BASH_LINENO[@]:0:${#BASH_LINENO[@]}-1} FUNC: ${FUNCNAME[@]:1}"
+	echo ""
+	#echo grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
+	grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 | grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
+	exit ${STATUS:-0}
+}
+
+trap '__trapexit $?' EXIT
+__trapexit(){
+	set +eu
+	if [ $1 = 0 ]; then
+		[ "${__SILENT:-}" = "" ] && echo "SUCCESS ${__BASH_SOURCE} $__ARGV" >&2
+	else
+		echo "FAILED ${__BASH_SOURCE} $__ARGV" >&2
+	fi
+	exit $1
+}
+
+sys::usage(){
+	(
+		set +e
+		echo
+		grep -H '# [-][-]help' ${__BASH_SOURCE} | sed -n 's/^.*[/]\(.*\)[ ]*[ #]*--help[ ]*\(.*\)/\1 \2/p'
+		exit 0
+	)
+	trap : EXIT
+	exit 0
+}

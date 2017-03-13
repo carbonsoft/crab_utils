@@ -1,0 +1,162 @@
+#!/bin/bash
+
+set -eu
+
+echo test
+
+cat <<EOF
+1
+2
+3
+4
+5
+6
+EOF
+
+{
+	echo test
+}
+
+for f in 1 2 3; do
+	echo test
+done
+
+set -eu
+
+echo test
+{
+	echo test
+}
+
+
+if true; then
+	echo true
+fi
+
+while false; do
+	echo true
+
+	if true; then
+		echo test
+	else
+		echo test
+	fi
+	echo true
+done
+cat | grep . | while read t; do
+	echo qwe
+done
+
+function test1(){
+	echo qwe
+	return 0
+}
+
+cat /proc/meminfo \
+	| grep . | while read t; do
+		echo $t
+	done
+
+cat /proc/meminfo \
+	| grep . \
+	| while read t; do
+		echo $t
+	done
+
+{
+	(
+		echo test
+	)
+}
+
+
+(
+	set -x; PS4=''; . /node/bin/__vm_config;
+	set +x;
+	for conf in $VM_DIR/*.conf; do
+		set -x
+		. "$conf"
+	done
+	set +x
+) 2>&1 | grep '=' |grep -v '+ PS4' \
+	| sed 's/\(eval \)*\('"'"'\)*\([^ ]*\)[=].*/\3/' | sort | uniq \
+	| (
+		. /node/bin/__vm_config
+		while read val_name; do
+			my_continue=0
+			for conf in $VM_DIR/*.conf /node/node_id.conf; do
+				if grep -qm1 "^${val_name}=" "$conf"; then
+					. "$conf"
+					echo "${conf##*/}:${val_name}=${!val_name}"
+					my_continue=1
+				fi
+			done
+			[ "$my_continue" = 1 ] && continue
+			conf=/node/node$NODE_ID/etc/node.conf
+			if grep -qm1 "^${val_name}=" "$conf"; then
+				. "$conf"
+				echo "${conf##*/}:${val_name}=${!val_name}"
+				my_continue=1
+			fi
+			[ "$my_continue" = 1 ] && continue
+			conf=/node/etc/main.conf
+			if grep -qm1 "^${val_name}=" "$conf"; then
+				. "$conf"
+				echo "${conf##*/}:${val_name}=${!val_name}"
+				my_continue=1
+			fi
+			[ "$my_continue" = 1 ] && continue
+			echo "CALC:${val_name}=${!val_name}"
+
+		done
+	) | sort
+
+__node(){
+	shift
+	case $1 in
+	"list")
+		__node_list "$@"
+		;;
+	"do")
+		__node_do "$@"
+		;;
+	"update")
+		node_update "$@"
+		;;
+	*)
+		echo "Not supported: $@"
+		;;
+	esac
+	return 0
+}
+
+#{
+	# indent comment
+#}
+
+{
+	echo "1
+2
+3
+4
+5
+6
+7
+"
+	echo 1
+}
+
+{
+	echo '1
+2
+3
+4
+5
+6
+7
+'
+	echo 1
+}
+
+echo SUCCESS
+exit 0

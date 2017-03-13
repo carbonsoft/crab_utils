@@ -1,0 +1,226 @@
+#!/bin/bash
+
+set -eu
+
+if [ "${1:---help}" = "--help" ]; then
+	/opt/crab/crab_help ${0##/*}
+	### --help утилита проверки синтаксиса и ошибок bash в стиле set -eu
+	### --help обязательна для всех новых файлов с 2017 года
+	### --help для старых файлов переход на set -eu разрешен только после написания func/unit теста
+	### --help test-имя, в котором тестируется _весь_ функционал скрипта в чистых и ошибочных ситуациях
+	### --help Usage:
+	### --help crab_syntax filename bash|cc|python|html|xml
+	### --help crab_syntax $DIR recurring
+	exit 0
+fi
+
+syntax_style=${2:-bash}
+
+if [ -d "$1" ]; then
+	DIR="$1"
+	failed=FALSE
+	while read f; do
+		head -n1 "$f" | grep -qm1 '#!/bin/bash' || continue
+		echo -n "### crab_syntax ${f}: "
+		/opt/crab/crab_syntax "$f" || failed=TRUE
+	done< <( find "$DIR"/* -type f )
+	[ $failed = TRUE  ] && { echo FAILED; exit 1; }
+	echo '### crab_syntax SUCCESS'
+	exit 0
+fi
+
+[ "$syntax_style" != "bash" ] && { echo "not supported \"$syntax_style\" yet. plz add new style"; exit 0; }
+
+__SPACE=$' \t'
+f=$1
+
+if grep '^[#$__SPACE]* skip crab_syntax' "$f"; then
+	echo SKIP
+	exit 0
+fi
+
+ERROR=0
+error_msg=""
+
+echo_error(){
+	ERROR=$((ERROR+1))
+	echo "^^^ERROR $@"
+	echo
+	return 0
+}
+
+bash001(){
+	### crab_indent
+	cp -f "$f" /tmp/crab_syntax_check.$$
+	crab_indent /tmp/crab_syntax_check.$$ "$syntax_style" &>/tmp/crab_indent_out.$$
+	if ! cmp /tmp/crab_syntax_check.$$ "$f"; then
+		cat /tmp/crab_indent_out.$$
+		echo_error 'bash001 Не выполнен crab_indent'
+	fi
+	rm -f /tmp/crab_indent_out.$$
+	rm -f /tmp/crab_syntax_check.$$
+	return 0
+}
+
+bash002(){
+	head -n 10 "$f" | grep -q '^set -eu' || echo_error 'bash002 Не установлен set -eu'
+	return 0
+}
+
+bash003(){
+	egrep -n '^[^#].*(if|&&|\|\|).* \|\| true' "$f" &&\
+		echo_error 'bash003 Нельзя использовать || true в условных выражениях'
+	return 0
+}
+
+bash004(){
+	grep -n 'else' -A 1 "$f" | egrep "^[0-9$__SPACE-]*true" && echo_error 'bash004 Нельзя использовать else true в условных выражениях'
+	return 0
+}
+
+bash005(){
+	### todo обрабатывать отдельно каждую функцию
+	count_func=$( grep '()[ ]*{' "$f" | wc -l ) # '
+	count_end_return=$( grep 'return' -A 1 "$f" | grep '^}' | wc -l )
+	[ $count_func != $count_end_return ] && echo_error 'bash005 $count_func!=$count_end_return В конце каждой функции должен быть return 0 или return $ret'
+	return 0
+}
+
+bash006(){
+	if ! tail -n 2 "$f" | head -n 1 | grep -q 'SUCCESS'; then
+		echo_error 'bash006 В конце каждого файла должен быть:
+		echo SUCCESS
+		exit 0
+		или для тихих:
+		# echo SUCCESS
+		или для библиотек:
+		# exit 0'
+	fi
+	return 0
+}
+
+bash007(){
+	if ! tail -n 1 "$f" | grep -q 'exit 0'; then
+		echo_error 'bash007 В конце каждого файла должен быть:
+		echo SUCCESS
+		exit 0
+		или для тихих:
+		# echo SUCCESS
+		или для библиотек:
+		# exit 0
+		'
+	fi
+	return 0
+}
+
+bash008(){
+	head -n 1 "$f" | grep -qm1 '#!/bin/bash' || echo_error 'bash008 Обязательно использовать #!/bin/bash даже в include'
+	return 0
+}
+
+bash009(){
+	grep -n 'let[^.]*=.*' "$f" && echo_error 'bash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())'
+	return 0
+}
+
+bash010(){
+	cat "$f" | grep -v bash010 | grep -n '^[^#].*=/tmp/' && echo 'WARNING ^^^ bash010 Не рекомендуется использовать переменные для временных файлов, лучше /tmp/binname_tmpcat.$$'
+	if egrep -q '^[^#]rm.*/tmp/.*' "$f" && \
+		! egrep 'rm.*/tmp/.*' "$f" | grep -qm1 '$$'; then
+		egrep -n 'rm.*/tmp/.*' "$f"
+		echo_error 'bash011 Нельзя использовать временные файлы без $$, лучше rm -f /tmp/binname_tmpcat.$$'
+	fi
+	return 0
+}
+
+bash011(){
+	indent_max=0
+	indent_max_lnum=0
+	local l=0
+	while IFS='' read -r line; do
+		l=$((l+1))
+		indent=$( echo "$line" | sed 's/        /\t/' | sed 's/\t/        /g' | sed -n 's/^\([ ]\{1,\}\)\([^ ].*\)$/\1/p' | wc -m ) # '
+		indent=$((indent/8))
+		(( $indent > $indent_max )) && { indent_max="$indent"; indent_max_lnum=$l; }
+	done < "$f"
+
+	if (( $indent_max > 5 )); then
+		grep -n . "$f" | grep "^$indent_max_lnum:"
+		echo_error "bash011 слишком большая глубина(indent=$indent_max), используйте ранний return или сделайте подфункции"
+	fi
+	return 0
+}
+
+bash012(){
+	grep -n '.*|[ ]*[\]$' "$f"  && echo_error 'bash012 pipe в "| \" требуется вынести на следующую строку.
+	Пример:
+	cat 123 | grep 123 \
+		| while read t; do echo 123; done
+	'
+	return 0
+}
+
+bash013(){
+	grep -n "^[$__SPACE]*#[^ !#{}]." "$f" && echo_error 'bash013 ставьте пробел после # или используйте #} #{ для ошибок indent'
+	return 0
+}
+
+MAX_FSIZE=64
+bash014(){
+	local n=0
+	local fstart=0
+	local fsize=0
+	local fsize_error=FALSE
+	local fstart_line=''
+	# for f in /usr/src/linux/net/core/*.c; do /opt/crab/crab_syntax_check "$f"; done | sort -n | uniq -c | sort -n
+	while IFS='' read -r line; do
+		n=$((n+1))
+		if [[ "$line" == *'()'*'{' ]]; then
+			fstart=$n
+			fstart_line=$line
+		fi
+		if [[ "$line" == '{' ]]; then
+			fstart=$n
+			fstart_line=$line
+		fi
+		if (( $fstart > 0 )); then
+			echo "$line" | grep -qm1 "^[$__SPACE]*#.*" && continue
+			fsize=$(( fsize+1 ))
+			if [[ "$line" == '}'* ]]; then
+				if (( $fsize > $MAX_FSIZE )); then
+					echo "$fstart: fsize=$fsize $fstart_line"
+					fsize_error=TRUE
+				fi
+				fstart=0
+				fstart_line=
+				fsize=0
+			fi
+		fi
+	done < "$f"
+	[ $fsize_error = TRUE ] && echo_error "bash014 Слишком большая функция больше $MAX_FSIZE строк, выделите подфункции __f"
+	return 0
+}
+
+
+bash015(){
+	fsize=$(cat "$f" | wc -l )
+	fcomm_size=$( grep "^[$__SPACE]*#.*" "$f" | wc -l )
+	fcount=$( grep '()[ ]*{' "$f" | wc -l ) # ' #}
+	fcount=$(( fcount + 1 ))
+	(( (fsize-fcomm_size)/fcount > $MAX_FSIZE )) && echo_error "bash015 Слишком большой линейный файл больше $MAX_FSIZE строк, разбейте на функции"
+	return 0
+}
+bash016(){
+	egrep -n ".*[$__SPACE]\$" "$f" && echo_error 'bash016 Уберите конечные пробелы и tab'
+	return 0
+}
+
+###
+for check in $( typeset -F | grep bash[0-9][0-9][0-9] | sed 's/declare -f //'); do
+	$check
+done
+
+[ "$error_msg" != "" ]  && echo -e "$error_msg"
+[ $ERROR != 0  ] && { echo FAILED; exit 1; }
+echo SUCCESS
+exit 0

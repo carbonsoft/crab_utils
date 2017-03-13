@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -eu
+
+grep -H '# [-][-]help' /opt/crab/${1:-*} | sed -n 's/^.*[/]\(.*\)[ ]*[ #]*--help[ ]*\(.*\)/\1 \2/p'
+
+# echo SUCCESS
+exit 0

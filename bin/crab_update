@@ -1,0 +1,48 @@
+#!/bin/bash
+
+set -eu
+
+create_symlink(){
+	set -eu
+	for f in /opt/crab/*/bin/crab_*; do
+		[ -x "$f" ] && ln -fs "$f" /bin/${f##*/}
+	done
+	return 0
+}
+
+configure_mc(){
+	[ ! -d "${HOME:-}/.mc/" ] && return 0
+	[ -f "$HOME/.mc/cedit/cooledit.macros" -a ! -f "$HOME/.mc/cedit/cooledit.macros.backup" ] && \
+		mv "$HOME/.mc/cedit/cooledit.macros" "$HOME/.mc/cedit/cooledit.macros.backup"
+	[ -f "$HOME/.mc/cedit/edit.indent.rc" -a ! -f "$HOME/.mc/cedit/edit.indent.rc.backup" ] && \
+		mv "$HOME/.mc/cedit/edit.indent.rc" "$HOME/.mc/cedit/edit.indent.rc.backup"
+	cp -af /opt/crab/tmplt/cooledit.macros "$HOME/.mc/cedit/cooledit.macros"
+	cp -af /opt/crab/tmplt/edit.indent.rc "$HOME/.mc/cedit/edit.indent.rc"
+	return 0
+}
+
+git_update(){
+	(
+		cd /opt/crab/
+		if LANG=C git status | grep -qm1 modified; then
+			rsync -a /opt/crab/ /opt/crab.$$/
+			echo "all modified files moved to /opt/crab.$$/" >/opt/crab/README.$$
+		fi
+		git reset --hard
+		git pull origin master
+		git reset --hard
+	)
+	return 0
+}
+
+[ ! -d /opt/crab/ ] && mkdir -p /opt/crab/
+[ ! -d /opt/crab/.git ] && ( cd /opt/crab/; git clone 'http://gitrd.carbonsoft.ru/devops/crab.git' . ; )
+
+git_update
+create_symlink
+configure_mc
+
+ln -fs /opt/crab/tmplt/crab.cron /etc/cron.d/crab.cron
+
+echo '### crab_install: SUCCESS'
+exit 0
