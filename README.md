@@ -8,8 +8,11 @@ git clone https://github.com/carbonsoft/crab_utils.git
 /opt/crab/utils/crab_update
 
 usage:
+
 crab_indent
+
 crab_syntax
+
 crab_example
 
 for more info go to www.opencarbon.ru
