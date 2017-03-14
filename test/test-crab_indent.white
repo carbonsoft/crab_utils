@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo $0 START
+
 set -eu
 
 echo test
@@ -158,5 +160,5 @@ __node(){
 	echo 1
 }
 
-echo SUCCESS
+echo $0 SUCCESS
 exit 0

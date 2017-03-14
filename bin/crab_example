@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -eu
+. /opt/crab/crab_utils/bin/::carbon.sys
 
 # fixme
 # echo 0 > /tmp/.carbon_help/lastupdate
@@ -27,5 +28,4 @@ for url in $(<$HOME/.carbon_help.urls); do
 	fi
 done
 
-# echo SUCCESS
 exit 0

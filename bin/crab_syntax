@@ -2,17 +2,16 @@
 
 set -eu
 
-if [ "${1:---help}" = "--help" ]; then
-	/opt/crab/crab_help ${0##/*}
-	### --help утилита проверки синтаксиса и ошибок bash в стиле set -eu
-	### --help обязательна для всех новых файлов с 2017 года
-	### --help для старых файлов переход на set -eu разрешен только после написания func/unit теста
-	### --help test-имя, в котором тестируется _весь_ функционал скрипта в чистых и ошибочных ситуациях
-	### --help Usage:
-	### --help crab_syntax filename bash|cc|python|html|xml
-	### --help crab_syntax $DIR recurring
-	exit 0
-fi
+. /opt/crab/crab_utils/bin/::carbon.sys
+
+sys::usage "$@"
+### --help утилита проверки синтаксиса и ошибок bash в стиле set -eu
+### --help обязательна для всех новых файлов с 2017 года
+### --help для старых файлов переход на set -eu разрешен только после написания func/unit теста
+### --help test-имя, в котором тестируется _весь_ функционал скрипта в чистых и ошибочных ситуациях
+### --help Usage:
+### --help crab_syntax filename bash|cc|python|html|xml
+### --help crab_syntax $DIR recurring
 
 syntax_style=${2:-bash}
 
@@ -21,11 +20,9 @@ if [ -d "$1" ]; then
 	failed=FALSE
 	while read f; do
 		head -n1 "$f" | grep -qm1 '#!/bin/bash' || continue
-		echo -n "### crab_syntax ${f}: "
-		/opt/crab/crab_syntax "$f" || failed=TRUE
+		/opt/crab/crab_utils/bin/crab_syntax "$f" || failed=TRUE
 	done< <( find "$DIR"/* -type f )
 	[ $failed = TRUE  ] && { echo FAILED; exit 1; }
-	echo '### crab_syntax SUCCESS'
 	exit 0
 fi
 
@@ -80,21 +77,33 @@ bash004(){
 
 bash005(){
 	### todo обрабатывать отдельно каждую функцию
-	count_func=$( grep '()[ ]*{' "$f" | wc -l ) # '
-	count_end_return=$( grep 'return' -A 1 "$f" | grep '^}' | wc -l )
+	count_func=$( grep '()[ ]*{' "$f" | wc -l || true ) # '
+	count_end_return=$( grep 'return' -A 1 "$f" | grep '^}' | wc -l || true )
 	[ $count_func != $count_end_return ] && echo_error 'bash005 $count_func!=$count_end_return В конце каждой функции должен быть return 0 или return $ret'
 	return 0
 }
 
 bash006(){
-	if ! tail -n 2 "$f" | head -n 1 | grep -q 'SUCCESS'; then
-		echo_error 'bash006 В конце каждого файла должен быть:
-		echo SUCCESS
+	if ! tail -n 2 "$f" | head -n 1 | grep -q 'SUCCESS'\
+		|| ! grep -q 'echo.*START' "$f"; then
+		grep -qm1 '::carbon.sys' "$f" && return 0
+		echo_error 'bash006 В начале каждого файла должен быть:
+		echo $0 START >&2
+		BODY
+		В конце каждого файла должен быть:
+		echo $0 SUCCESS >&2
 		exit 0
+
 		или для тихих:
-		# echo SUCCESS
+		# echo $0 SUCCESS
 		или для библиотек:
-		# exit 0'
+		# exit 0
+
+		или используйте:
+		. ::carbon.sys
+		BODY
+		exit 0
+		'
 	fi
 	return 0
 }
@@ -102,10 +111,7 @@ bash006(){
 bash007(){
 	if ! tail -n 1 "$f" | grep -q 'exit 0'; then
 		echo_error 'bash007 В конце каждого файла должен быть:
-		echo SUCCESS
 		exit 0
-		или для тихих:
-		# echo SUCCESS
 		или для библиотек:
 		# exit 0
 		'
@@ -139,7 +145,7 @@ bash011(){
 	local l=0
 	while IFS='' read -r line; do
 		l=$((l+1))
-		indent=$( echo "$line" | sed 's/        /\t/' | sed 's/\t/        /g' | sed -n 's/^\([ ]\{1,\}\)\([^ ].*\)$/\1/p' | wc -m ) # '
+		indent=$( echo "$line" | sed 's/        /\t/' | sed 's/\t/        /g' | sed -n 's/^\([ ]\{1,\}\)\([^ ].*\)$/\1/p' | wc -m || true ) # '
 		indent=$((indent/8))
 		(( $indent > $indent_max )) && { indent_max="$indent"; indent_max_lnum=$l; }
 	done < "$f"
@@ -204,8 +210,8 @@ bash014(){
 
 bash015(){
 	fsize=$(cat "$f" | wc -l )
-	fcomm_size=$( grep "^[$__SPACE]*#.*" "$f" | wc -l )
-	fcount=$( grep '()[ ]*{' "$f" | wc -l ) # ' #}
+	fcomm_size=$( grep "^[$__SPACE]*#.*" "$f" | wc -l || true )
+	fcount=$( grep '()[ ]*{' "$f" | wc -l || true ) # ' #}
 	fcount=$(( fcount + 1 ))
 	(( (fsize-fcomm_size)/fcount > $MAX_FSIZE )) && echo_error "bash015 Слишком большой линейный файл больше $MAX_FSIZE строк, разбейте на функции"
 	return 0
@@ -216,11 +222,10 @@ bash016(){
 }
 
 ###
-for check in $( typeset -F | grep bash[0-9][0-9][0-9] | sed 's/declare -f //'); do
+for check in $( typeset -F | grep bash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
 	$check
 done
 
 [ "$error_msg" != "" ]  && echo -e "$error_msg"
 [ $ERROR != 0  ] && { echo FAILED; exit 1; }
-echo SUCCESS
 exit 0

@@ -4,6 +4,8 @@
 ### bash002 Не установлен set -eu
 set +eu
 
+### bash006 1
+echo $0 ST#A#RT
 
 ### bash001 Не выполнен crab_indent
 {

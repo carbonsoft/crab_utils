@@ -1,12 +1,13 @@
 #!/bin/bash
 
 set -eu
+. /opt/crab/crab_utils/bin/::carbon.sys
+
 err=0
 
 for test in /opt/crab/crab_utils/test/test-*; do
 	[ ! -x $test ] && continue
 	echo
-	echo -n "TEST ${test}: "
 	$test || err=$((err+1))
 done
 
@@ -14,5 +15,4 @@ done
 
 [ $err != 0 ] && exit 1
 
-echo '### autotest SUCCESS'
 exit 0
