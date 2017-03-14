@@ -6,15 +6,20 @@ set -eu
 
 failed=FALSE
 
-/opt/crab/crab_utils/bin/crab_syntax /opt/crab/crab_utils/test/test-crab_syntax.white || failed=TRUE
+/opt/crab/crab_utils/bin/crab_syntax \
+	/opt/crab/crab_utils/test/test-crab_syntax.white || failed=TRUE
 
-/opt/crab/crab_utils/bin/crab_syntax /opt/crab/crab_utils/test/test-crab_syntax.black &>/tmp/test-crab_syntax.$$ || true
+/opt/crab/crab_utils/bin/crab_syntax \
+	/opt/crab/crab_utils/test/test-crab_syntax.black &>/tmp/test-crab_syntax.$$ || true
 
-check_funcs=$( cat /opt/crab/crab_utils/bin/crab_syntax | grep 'bash[0-9][0-9][0-9]()' | sed -n  's/^\(bash[0-9]\{3\}\).*/\1/p' ) # '
+check_funcs=$( cat /opt/crab/crab_utils/bin/crab_syntax \
+	| grep 'bash[0-9][0-9][0-9]()' \
+	| sed -n  's/^\(bash[0-9]\{3\}\).*/\1/p' ) # '
 
 for func in $check_funcs; do
 	if ! grep -qm1 "$func" /tmp/test-crab_syntax.$$; then
-		echo TEST $0 $func not found in /opt/crab/crab_utils/test/test-crab_syntax.black [ FAILED ]
+		echo "TEST $0 $func not found in "\
+			"/opt/crab/crab_utils/test/test-crab_syntax.black [ FAILED ]"
 		failed=TRUE
 	fi
 done

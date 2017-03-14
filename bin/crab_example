@@ -22,9 +22,13 @@ fi
 
 for url in $(<$HOME/.carbon_help.urls); do
 	if [ "${2:-}" != "" ]; then
-		grep -i "#$1" /tmp/.carbon_help/${url//\//_} | grep -i "${2:-.}" | sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/' | sed 's/^#\w*\s//'
+		grep -i "#$1" /tmp/.carbon_help/${url//\//_} \
+			| grep -i "${2:-.}" \
+			| sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/' \
+			| sed 's/^#\w*\s//'
 	else
-		grep -i "#$1" /tmp/.carbon_help/${url//\//_} | sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/'
+		grep -i "#$1" /tmp/.carbon_help/${url//\//_} \
+			| sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/'
 	fi
 done
 

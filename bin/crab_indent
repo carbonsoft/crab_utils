@@ -15,7 +15,8 @@ fi
 
 case "${2:-bash}" in
 bash)
-	vim -T dumb -u /opt/crab/crab_utils/bin/crab_indent.vimrc -c ':normal gg=G' -c ':x' "$1" -s /dev/null &>/dev/null </dev/null
+	vim -T dumb -u /opt/crab/crab_utils/bin/crab_indent.vimrc \
+		-c ':normal gg=G' -c ':x' "$1" -s /dev/null &>/dev/null </dev/null
 	;;
 *)
 	echo not supported yet. plz add new style

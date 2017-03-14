@@ -26,7 +26,10 @@ if [ -d "$1" ]; then
 	exit 0
 fi
 
-[ "$syntax_style" != "bash" ] && { echo "not supported \"$syntax_style\" yet. plz add new style"; exit 0; }
+if [ "$syntax_style" != "bash" ]; then
+	echo "not supported \"$syntax_style\" yet. plz add new style"
+	exit 0
+fi
 
 __SPACE=$' \t'
 f=$1
@@ -49,6 +52,7 @@ echo_error(){
 bash001(){
 	### crab_indent
 	cp -f "$f" /tmp/crab_syntax_check.$$
+	chmod 666 /tmp/crab_syntax_check.$$
 	crab_indent /tmp/crab_syntax_check.$$ "$syntax_style" &>/tmp/crab_indent_out.$$
 	if ! cmp /tmp/crab_syntax_check.$$ "$f"; then
 		cat /tmp/crab_indent_out.$$
@@ -71,7 +75,8 @@ bash003(){
 }
 
 bash004(){
-	grep -n 'else' -A 1 "$f" | egrep "^[0-9$__SPACE-]*true" && echo_error 'bash004 Нельзя использовать else true в условных выражениях'
+	grep -n 'else' -A 1 "$f" | egrep "^[0-9$__SPACE-]*true" \
+		&& echo_error 'bash004 Нельзя использовать else true в условных выражениях'
 	return 0
 }
 
@@ -79,7 +84,10 @@ bash005(){
 	### todo обрабатывать отдельно каждую функцию
 	count_func=$( grep '()[ ]*{' "$f" | wc -l || true ) # '
 	count_end_return=$( grep 'return' -A 1 "$f" | grep '^}' | wc -l || true )
-	[ $count_func != $count_end_return ] && echo_error 'bash005 $count_func!=$count_end_return В конце каждой функции должен быть return 0 или return $ret'
+	[ $count_func != $count_end_return ] \
+		&& echo_error \
+		'bash005 $count_func!=$count_end_return В конце каждой функции должен быть '\
+		'return 0 или return $ret'
 	return 0
 }
 
@@ -120,21 +128,27 @@ bash007(){
 }
 
 bash008(){
-	head -n 1 "$f" | grep -qm1 '#!/bin/bash' || echo_error 'bash008 Обязательно использовать #!/bin/bash даже в include'
+	head -n 1 "$f" | grep -qm1 '#!/bin/bash' \
+		|| echo_error 'bash008 Обязательно использовать #!/bin/bash даже в include'
 	return 0
 }
 
 bash009(){
-	grep -n 'let[^.]*=.*' "$f" && echo_error 'bash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())'
+	grep -n 'let[^.]*=.*' "$f" \
+		&& echo_error \
+		'bash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())'
 	return 0
 }
 
 bash010(){
-	cat "$f" | grep -v bash010 | grep -n '^[^#].*=/tmp/' && echo 'WARNING ^^^ bash010 Не рекомендуется использовать переменные для временных файлов, лучше /tmp/binname_tmpcat.$$'
+	cat "$f" | grep -v bash010 | grep -n '^[^#].*=/tmp/' \
+		&& echo 'WARNING ^^^ bash010 Не рекомендуется использовать переменные '\
+		'для временных файлов, лучше /tmp/binname_tmpcat.$$'
 	if egrep -q '^[^#]rm.*/tmp/.*' "$f" && \
 		! egrep 'rm.*/tmp/.*' "$f" | grep -qm1 '$$'; then
 		egrep -n 'rm.*/tmp/.*' "$f"
-		echo_error 'bash011 Нельзя использовать временные файлы без $$, лучше rm -f /tmp/binname_tmpcat.$$'
+		echo_error 'bash011 Нельзя использовать временные файлы без $$, '\
+			'лучше rm -f /tmp/binname_tmpcat.$$'
 	fi
 	return 0
 }
@@ -145,20 +159,26 @@ bash011(){
 	local l=0
 	while IFS='' read -r line; do
 		l=$((l+1))
-		indent=$( echo "$line" | sed 's/        /\t/' | sed 's/\t/        /g' | sed -n 's/^\([ ]\{1,\}\)\([^ ].*\)$/\1/p' | wc -m || true ) # '
+		indent=$( echo "$line" | sed 's/        /\t/' \
+			| sed 's/\t/        /g' \
+			| sed -n 's/^\([ ]\{1,\}\)\([^ ].*\)$/\1/p' \
+			| wc -m || true ) # '
 		indent=$((indent/8))
 		(( $indent > $indent_max )) && { indent_max="$indent"; indent_max_lnum=$l; }
 	done < "$f"
 
 	if (( $indent_max > 5 )); then
 		grep -n . "$f" | grep "^$indent_max_lnum:"
-		echo_error "bash011 слишком большая глубина(indent=$indent_max), используйте ранний return или сделайте подфункции"
+		echo_error \
+			"bash011 слишком большая глубина(indent=$indent_max), "\
+			"используйте ранний return или сделайте подфункции"
 	fi
 	return 0
 }
 
 bash012(){
-	grep -n '.*|[ ]*[\]$' "$f"  && echo_error 'bash012 pipe в "| \" требуется вынести на следующую строку.
+	grep -n '.*|[ ]*[\]$' "$f"  \
+		&& echo_error 'bash012 pipe в "| \" требуется вынести на следующую строку.
 	Пример:
 	cat 123 | grep 123 \
 		| while read t; do echo 123; done
@@ -167,7 +187,8 @@ bash012(){
 }
 
 bash013(){
-	grep -n "^[$__SPACE]*#[^ !#{}]." "$f" && echo_error 'bash013 ставьте пробел после # или используйте #} #{ для ошибок indent'
+	grep -n "^[$__SPACE]*#[^ !#{}]." "$f" \
+		&& echo_error 'bash013 ставьте пробел после # или используйте #} #{ для ошибок indent'
 	return 0
 }
 
@@ -178,7 +199,6 @@ bash014(){
 	local fsize=0
 	local fsize_error=FALSE
 	local fstart_line=''
-	# for f in /usr/src/linux/net/core/*.c; do /opt/crab/crab_syntax_check "$f"; done | sort -n | uniq -c | sort -n
 	while IFS='' read -r line; do
 		n=$((n+1))
 		if [[ "$line" == *'()'*'{' ]]; then
@@ -203,7 +223,10 @@ bash014(){
 			fi
 		fi
 	done < "$f"
-	[ $fsize_error = TRUE ] && echo_error "bash014 Слишком большая функция больше $MAX_FSIZE строк, выделите подфункции __f"
+	[ $fsize_error = TRUE ] \
+		&& echo_error \
+		"bash014 Слишком большая функция больше $MAX_FSIZE строк, "\
+		"выделите подфункции __fname"
 	return 0
 }
 
@@ -213,11 +236,34 @@ bash015(){
 	fcomm_size=$( grep "^[$__SPACE]*#.*" "$f" | wc -l || true )
 	fcount=$( grep '()[ ]*{' "$f" | wc -l || true ) # ' #}
 	fcount=$(( fcount + 1 ))
-	(( (fsize-fcomm_size)/fcount > $MAX_FSIZE )) && echo_error "bash015 Слишком большой линейный файл больше $MAX_FSIZE строк, разбейте на функции"
+	if (( (fsize-fcomm_size)/fcount > $MAX_FSIZE )); then
+		echo_error \
+			"bash015 Слишком большой линейный файл больше $MAX_FSIZE строк, "\
+			"разбейте на функции"
+	fi
 	return 0
 }
 bash016(){
-	egrep -n ".*[$__SPACE]\$" "$f" && echo_error 'bash016 Уберите конечные пробелы и tab'
+	egrep -n ".*[$__SPACE]\$" "$f" \
+		&& echo_error 'bash016 Уберите конечные пробелы и tab'
+	return 0
+}
+
+MAX_CHARS=100
+bash017(){
+	while IFS='' read -r line; do
+		chars_count=$( echo "$line" | wc -m  || true )
+		if [ $chars_count -gt $MAX_CHARS ]; then
+			echo "$line"
+			echo_error "bash017 длина строки больше $MAX_CHARS используйте перенос \\ "
+		fi
+	done < "$f"
+	return 0
+}
+
+bash018(){
+	egrep -n  "^[$__SPACE]*[^#]+.*[^ 0-9)&>$__SPACE]>[ ]*+[^ \$\"'[]+"  "$f" \
+		&& echo_error 'bash018 поставьте пробел перед "text >oo"'
 	return 0
 }
 

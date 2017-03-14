@@ -24,7 +24,8 @@ else
 	echo no
 fi
 
-### bash005 $count_func!=$count_end_return В конце каждой функции должен быть return 0 или return $ret'
+### bash005 $count_func!=$count_end_return
+### В конце каждой функции должен быть return 0 или return $ret'
 FAIL005(){
 	[ 1 = 2 ] && return 1
 	echo yes
@@ -42,7 +43,8 @@ FAIL005_1(){
 ### bash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())
 y=$((y+1))
 
-### bash010 Не рекомендуется использовать переменные для временных файлов, лучше /tmp/binname_tmpcat.$$
+### bash010 Не рекомендуется использовать переменные для временных файлов,
+### лучше /tmp/binname_tmpcat.$$
 rm -f /tmp/test-crab_syntax_check.black.$$
 
 ### bash011 Нельзя использовать временные файлы без $$, лучше rm -f /tmp/binname_tmpcat.$$
