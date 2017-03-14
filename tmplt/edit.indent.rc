@@ -27,6 +27,6 @@ case `echo $1 |sed 's/^.*\.//'` in
     *)
     # http://www.gnu.org/software/coreutils/
 #        fmt "$2" >"$2.tmp" && rm -f "$2" && mv -f "$2.tmp" "$2"
-	crab_indent "$2" bash
+	crab_indent "$2" bash 2>/dev/null
     ;;
 esac

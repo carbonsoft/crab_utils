@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -eu
+. /opt/crab/crab_utils/bin/::carbon.sys
 
 create_symlink(){
 	set -eu
@@ -24,7 +25,6 @@ configure_mc(){
 git_update(){
 	(
 		for repo in /opt/crab/*; do
-			# echo $repo
 			[ ! -d "$repo/.git/" ] && continue
 			cd $repo
 			if LANG=C git status | grep -qm1 modified; then
@@ -44,6 +44,4 @@ mkdir -p /opt/crab/
 git_update
 create_symlink
 configure_mc
-
-echo '### crab_install: SUCCESS'
 exit 0

@@ -1,15 +1,13 @@
 #!/bin/bash
 
 set -eu
+. /opt/crab/crab_utils/bin/::carbon.sys
 
-if [ "${1:---help}" = "--help" ]; then
-	/opt/crab/crab_help ${0##/*}
+sys::usage "$@"
 	### --help утилита форматирования кода, пока поддерживает только bash
 	### --help добавляйте свои языки всем на радость
 	### --help Usage:
 	### --help crab_indent filename bash|cc|python|html|xml
-	exit 0
-fi
 
 if [ "${2:-}" = "" ]; then
 	head -n1 "$1" | egrep -qm1 '#!/bin/bash|#!/bin/sh' || exit 0
@@ -17,12 +15,10 @@ fi
 
 case "${2:-bash}" in
 bash)
-	vim -T dumb -u /opt/crab/crab_indent.vimrc -c ':normal gg=G' -c ':x' "$1" -s /dev/null &>/dev/null </dev/null
+	vim -T dumb -u /opt/crab/crab_utils/bin/crab_indent.vimrc -c ':normal gg=G' -c ':x' "$1" -s /dev/null &>/dev/null </dev/null
 	;;
 *)
 	echo not supported yet. plz add new style
 	;;
 esac
-
-echo SUCCESS
 exit 0

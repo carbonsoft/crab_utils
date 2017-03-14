@@ -49,12 +49,12 @@ __trapexit(){
 }
 
 sys::usage(){
+	[ "${1:---help}" != "--help" ] && return 0
 	(
 		set +e
 		echo
 		grep -H '# [-][-]help' ${__BASH_SOURCE} | sed -n 's/^.*[/]\(.*\)[ ]*[ #]*--help[ ]*\(.*\)/\1 \2/p'
 		exit 0
 	)
-	trap : EXIT
-	exit 0
+	[ "${1:-}" = "--help" ] && exit 0 || exit 255
 }
