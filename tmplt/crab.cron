@@ -1,5 +1,0 @@
-SHELL=/bin/bash
-PATH=/sbin:/bin:/usr/sbin:/usr/bin
-MAILTO=root
-HOME=/
-* */1 * * * root /opt/crab/crab_install &>> /var/log/crab_install.log
