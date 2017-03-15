@@ -2,7 +2,7 @@
 
 echo $0 START
 
-set -eu
+set -euEo pipefail
 
 echo test
 

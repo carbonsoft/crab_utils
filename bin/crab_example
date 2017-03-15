@@ -1,34 +1,52 @@
 #!/bin/bash
 
 set -eu
+__SILENT=TRUE
 . /opt/crab/crab_utils/bin/::carbon.sys
 
+sys::usage "$@"
+### --help утилита поиска примеров http://www.opencarbon.ru и можно свои добавлять списки
+### --help Usage:
+### --help crab_example sed  - примеры sed
+### --help crab_example bash string - примеры bash подпримеры работы со строками
+### --help crab_example update - обновить кеш всех списков
+
+
+
+if [ "${1}" == update ]; then
+
+	echo 0 > /tmp/.carbon_example/lastupdate
+fi
+
 # fixme
-# echo 0 > /tmp/.carbon_help/lastupdate
-mkdir -p /tmp/.carbon_help
-if [ ! -s "$HOME/.carbon_help.urls" ]; then
-	echo 'http://www.opencarbon.ru/html/utils/carbon_help.txt' > "$HOME/.carbon_help.urls"
+# echo 0 > /tmp/.carbon_example/lastupdate
+
+mkdir -p /tmp/.carbon_example
+
+if [ ! -s "$HOME/.carbon_example.urls" ]; then
+	echo 'http://www.opencarbon.ru/?do=export_raw&id=example:carbon_example'\
+		> "$HOME/.carbon_example.urls"
 fi
 
-if [ ! -s /tmp/.carbon_help/lastupdate ]; then
-	echo 0 > /tmp/.carbon_help/lastupdate
+if [ ! -s /tmp/.carbon_example/lastupdate ]; then
+	echo 0 > /tmp/.carbon_example/lastupdate
 fi
-if [ $((`date +%s`-$(</tmp/.carbon_help/lastupdate))) -gt $((3600*24)) ]; then
-	for url in $(<$HOME/.carbon_help.urls); do
-		wget $url -O /tmp/.carbon_help/${url//\//_} &>/dev/null
+if [ $((`date +%s`-$(</tmp/.carbon_example/lastupdate))) -gt $((3600*24)) ]; then
+	for url in $(<$HOME/.carbon_example.urls); do
+		wget $url -O /tmp/.carbon_example/${url//\//_} &>/dev/null
 	done
-	date +%s > /tmp/.carbon_help/lastupdate
+	date +%s > /tmp/.carbon_example/lastupdate
 fi
 
-for url in $(<$HOME/.carbon_help.urls); do
+for url in $(<$HOME/.carbon_example.urls); do
 	if [ "${2:-}" != "" ]; then
-		grep -i "#$1" /tmp/.carbon_help/${url//\//_} \
+		grep -i "#$1" /tmp/.carbon_example/${url//\//_} \
 			| grep -i "${2:-.}" \
 			| sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/' \
-			| sed 's/^#\w*\s//'
+			| sed 's/^#\w*\s//' || true
 	else
-		grep -i "#$1" /tmp/.carbon_help/${url//\//_} \
-			| sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/'
+		grep -i "#$1" /tmp/.carbon_example/${url//\//_} \
+			| sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/' || true
 	fi
 done
 
