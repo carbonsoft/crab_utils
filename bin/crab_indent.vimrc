@@ -72,7 +72,7 @@ function GetShIndent()
 	let prevprevind = indent(prevprevnum)
 	let prevprevline = getline(prevprevnum)
 	
-	if prevline =~ '.*[<][<]EOF.*'
+	if prevline =~ '.*[<][<]EOF.*' && prevline !~ '^\s*#[ #]'
 		let s:indent_eof = prevind
 		return curind
 	endif
@@ -86,7 +86,7 @@ function GetShIndent()
 		return curind
 	endif
 
-	if prevline =~ 'echo "' && prevline !~ 'echo ".*"'
+	if prevline =~ 'echo "' && prevline !~ 'echo ".*"' && prevline !~ '^\s*#[ #]'
 		let s:indent_echo1 = prevind
 		return curind
 	endif
@@ -101,7 +101,7 @@ function GetShIndent()
 	endif
 
 
-	if prevline =~ "echo '" && prevline !~ "echo '.*'"
+	if prevline =~ "echo '" && prevline !~ "echo '.*'" && prevline !~ '^\s*#[ #]'
 		let s:indent_echo2 = prevind
 		return curind
 	endif
@@ -125,7 +125,7 @@ function GetShIndent()
 				\ || prevline =~ '^\s*#{$'
 				\ || prevline =~ '^\s*[^() \t]\{1,\})'
 				\ || prevline =~ '^\s*[ |]*($'
-		if prevline !~ '\(esac\|fi\|done\)\>\s*$' && prevline !~ '}\s*$' && prevline !~ '^\s*)' && prevline !~ '^\s*a#[ #]'
+		if prevline !~ '\(esac\|fi\|done\)\>\s*$' && prevline !~ '}\s*$' && prevline !~ '^\s*)' && prevline !~ '^\s*#[ #]'
 			let prevind = prevind + &sw
 			return prevind
 		endif
