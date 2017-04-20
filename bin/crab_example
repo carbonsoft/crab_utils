@@ -18,24 +18,31 @@ if [ "${1}" == update ]; then
 	echo 0 > /tmp/.carbon_example/lastupdate
 fi
 
-# fixme
-# echo 0 > /tmp/.carbon_example/lastupdate
-
-mkdir -p /tmp/.carbon_example
-
-if [ ! -s "$HOME/.carbon_example.urls" ]; then
-	echo 'http://www.opencarbon.ru/?do=export_raw&id=example:carbon_example'\
-		> "$HOME/.carbon_example.urls"
-fi
-
-if [ ! -s /tmp/.carbon_example/lastupdate ]; then
-	echo 0 > /tmp/.carbon_example/lastupdate
-fi
-if [ $((`date +%s`-$(</tmp/.carbon_example/lastupdate))) -gt $((3600*24)) ]; then
-	for url in $(<$HOME/.carbon_example.urls); do
+update(){
+	wget http://opencarbon.ru/example:example_index -O /tmp/example_index.$$ &>/dev/null
+	example_pages=$( grep href /tmp/example_index.$$ | grep example:example \
+		| grep 'class="wikilink1"' | grep -v start \
+		| grep -v example_index | sed -n 's/.*href="\/\([^"]*\).*/\1/p' )
+	rm -f /tmp/example_index.$$
+	for page in $example_pages; do
+		 echo "http://www.opencarbon.ru/?do=export_raw&id=${page}"
+	done > "$HOME/.carbon_example.urls"
+	touch "$HOME/.carbon_example_custom.urls"
+	for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
 		wget $url -O /tmp/.carbon_example/${url//\//_} &>/dev/null
 	done
 	date +%s > /tmp/.carbon_example/lastupdate
+}
+
+mkdir -p /tmp/.carbon_example
+touch /tmp/.carbon_example/lastupdate
+
+if [ "${1}" == update ]; then
+	update
+fi
+
+if [ $((`date +%s`-$(</tmp/.carbon_example/lastupdate) + 0 )) -gt $((3600*24)) ]; then
+	update
 fi
 
 for url in $(<$HOME/.carbon_example.urls); do
