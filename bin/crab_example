@@ -46,7 +46,7 @@ if [ $((`date +%s`-$(</tmp/.carbon_example/lastupdate) + 0 )) -gt $((3600*24)) ]
 	update
 fi
 
-for url in $(<$HOME/.carbon_example.urls); do
+for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
 	if [ "${2:-}" != "" ]; then
 		grep -i "#$1" /tmp/.carbon_example/${url//\//_} \
 			| grep -i "${2:-.}" \
