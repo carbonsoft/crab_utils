@@ -9,7 +9,7 @@ done
 
 __BASH_SOURCE=${BASH_SOURCE[1]}
 
-[ "${__SILENT:-}" = "" ] && echo "START ${__BASH_SOURCE} $__ARGV" >&2
+[ "${__SILENT:-}" = "" ] && echo "START ${__BASH_SOURCE} $__ARGV [$$]" >&2
 
 trap '__exit $? CMD=${BASH_COMMAND// /%%%%%} $@' ERR
 __exit(){
@@ -43,9 +43,9 @@ trap '__trapexit $?' EXIT
 __trapexit(){
 	set +eu
 	if [ $1 = 0 ]; then
-		[ "${__SILENT:-}" = "" ] && echo "SUCCESS ${__BASH_SOURCE} $__ARGV" >&2
+		[ "${__SILENT:-}" = "" ] && echo "SUCCESS ${__BASH_SOURCE} $__ARGV [$$]" >&2
 	else
-		echo "FAILED ${__BASH_SOURCE} $__ARGV" >&2
+		echo "FAILED ${__BASH_SOURCE} $__ARGV [$$]" >&2
 	fi
 	exit $1
 }

@@ -97,18 +97,18 @@ hardbash005(){
 }
 
 hardbash006(){
-	if ! tail -n 2 "$f" | head -n 1 | grep -q 'SUCCESS'\
-		|| ! grep -q 'echo.*START' "$f"; then
+	if ! tail -n 2 "$f" | head -n 1 | grep -q '$0 $@ \[$$\] SUCCESS'\
+		|| ! grep -q '$0 $@ \[$$\] START' "$f"; then
 		grep -qm1 '::carbon.sys' "$f" && return 0
 		echo_error 'hardbash006 В начале каждого файла должен быть:
-		echo $0 START >&2
+		echo "$0 $@ [$$] START" >&2
 		BODY
 		В конце каждого файла должен быть:
-		echo $0 SUCCESS >&2
+		echo "$0 $@ [$$] SUCCESS" >&2
 		exit 0
 
 		или для тихих:
-		# echo $0 SUCCESS
+		# echo "$0 $@ [$$] SUCCESS"
 		или для библиотек:
 		# exit 0
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo $0 START
+echo "$0 $@ [$$] START" >&2
 
 set -euEo pipefail
 
@@ -160,5 +160,5 @@ __node(){
 	echo 1
 }
 
-echo $0 SUCCESS
+echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
