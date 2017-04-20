@@ -25,7 +25,7 @@ update(){
 		| grep -v example_index | sed -n 's/.*href="\/\([^"]*\).*/\1/p' )
 	rm -f /tmp/example_index.$$
 	for page in $example_pages; do
-		 echo "http://www.opencarbon.ru/?do=export_raw&id=${page}"
+		echo "http://www.opencarbon.ru/?do=export_raw&id=${page}"
 	done > "$HOME/.carbon_example.urls"
 	touch "$HOME/.carbon_example_custom.urls"
 	rm -f /tmp/.carbon_example/*
@@ -33,6 +33,7 @@ update(){
 		wget $url -O /tmp/.carbon_example/${url//\//_} &>/dev/null
 	done
 	date +%s > /tmp/.carbon_example/lastupdate
+	return 0
 }
 
 mkdir -p /tmp/.carbon_example
@@ -46,16 +47,26 @@ if [ $((`date +%s`-$(</tmp/.carbon_example/lastupdate) + 0 )) -gt $((3600*24)) ]
 	update
 fi
 
+>/tmp/crab_example.$$
 for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
-	if [ "${2:-}" != "" ]; then
-		grep -i "#$1" /tmp/.carbon_example/${url//\//_} \
-			| grep -i "${2:-.}" \
-			| sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/' \
-			| sed 's/^#\w*\s//' || true
-	else
-		grep -i "#$1" /tmp/.carbon_example/${url//\//_} \
-			| sed 's/\(^#[^ ]*[^\w]\)\(.*\)/\2/' || true
+	grep -i -A 1 "###$1" /tmp/.carbon_example/${url//\//_} >>/tmp/crab_example.$$ || true
+	if [ $(cat /tmp/crab_example.$$ | wc -l ) = 0 ]; then
+		grep -i -B 1 -A 1 "$1" /tmp/.carbon_example/${url//\//_} >>/tmp/crab_example.$$ || true
+		:
 	fi
 done
-
+cat /tmp/crab_example.$$ | grep -v '^--$' \
+	| while read -r line; do
+		if [ "${line:0:1}" = '#' ]; then
+			if [ "${line:0:3}" = '###' ]; then
+				echo -e "${line}"
+			else
+				echo -e "${line%%###*}"
+			fi
+		else
+			echo -e "${line}"
+			echo
+		fi
+	done || true
+rm -f /tmp/crab_example.$$
 exit 0
