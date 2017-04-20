@@ -28,6 +28,7 @@ update(){
 		 echo "http://www.opencarbon.ru/?do=export_raw&id=${page}"
 	done > "$HOME/.carbon_example.urls"
 	touch "$HOME/.carbon_example_custom.urls"
+	rm -f /tmp/.carbon_example/*
 	for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
 		wget $url -O /tmp/.carbon_example/${url//\//_} &>/dev/null
 	done
