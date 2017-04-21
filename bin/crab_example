@@ -50,27 +50,24 @@ fi
 
 >/tmp/crab_example.$$
 
+
 for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
-	grep -i -A 1 "###$1" /tmp/.carbon_example/${url//\//_} \
-		| grep -i -A 1 "${2:-.}" >>/tmp/crab_example.$$ || true
-	if [ $(cat /tmp/crab_example.$$ | wc -l ) = 0 ]; then
-		grep -i -B 1 -A 1 "$1" /tmp/.carbon_example/${url//\//_} \
-			| grep -i -A 1 "${2:-.}" >>/tmp/crab_example.$$ || true
-		:
-	fi
-done
-cat /tmp/crab_example.$$ | grep -v '^--$' \
-	| while read -r line; do
-		if [ "${line:0:1}" = '#' ]; then
-			if [ "${line:0:3}" = '###' ]; then
-				echo -e "${line}"
-			else
-				echo -e "${line%%###*}"
+	showline=FALSE
+	while read -r line; do
+		if [[ "$line" == *"$1"* ]]; then
+			if [ "${2:-}" = "" ] || [[ "$line" == *"${2:-}"* ]]; then
+				showline=TRUE
 			fi
-		else
-			echo -e "${line}"
-			echo
 		fi
-	done || true
-rm -f /tmp/crab_example.$$
+		if [ "$showline" = "TRUE" ]; then
+			if [ "${line:0:1}" = '#' ]; then
+				echo "${line%%###*}"
+			else
+				echo "${line}"
+			fi
+			[ "$line" = "" ] && showline=FALSE
+		fi
+	done < /tmp/.carbon_example/${url//\//_}
+done
+
 exit 0
