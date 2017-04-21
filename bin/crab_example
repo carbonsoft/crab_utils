@@ -50,24 +50,43 @@ fi
 
 >/tmp/crab_example.$$
 
-
-for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
-	showline=FALSE
-	while read -r line; do
-		if [[ "$line" == *"$1"* ]]; then
-			if [ "${2:-}" = "" ] || [[ "$line" == *"${2:-}"* ]]; then
-				showline=TRUE
+search(){
+	words1="$1"
+	words2="$2"
+	for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
+		showline=FALSE
+		buff=""
+		while read -r line; do
+			shopt -s nocasematch
+			if [[ "$line" == *"${words1}"* ]]; then
+				if [ "${words2}" = "" ] || [[ "$line" == *"${words2}"* ]]; then
+					showline=TRUE
+					FOUND=""
+				fi
 			fi
-		fi
-		if [ "$showline" = "TRUE" ]; then
-			if [ "${line:0:1}" = '#' ]; then
-				echo "${line%%###*}"
+			if [ "$showline" = "TRUE" ]; then
+				if [ "$buff" != "" ]; then
+					echo -n "$buff"
+					buff=""
+				fi
+				if [ "${line:0:1}" = '#' ]; then
+					echo "${line%%###*}"
+				else
+					echo "${line}"
+				fi
 			else
-				echo "${line}"
+				buff="${buff}${line}"$'\n'
 			fi
-			[ "$line" = "" ] && showline=FALSE
-		fi
-	done < /tmp/.carbon_example/${url//\//_}
-done
+			if [ "$line" = "" ]; then
+				buff=""
+				showline=FALSE
+			fi
+		done < /tmp/.carbon_example/${url//\//_}
+	done
+}
+
+FOUND=FALSE
+search "###${1}" "${2:-}"
+[ "$FOUND" = FALSE ] && search "${1}" "${2:-}"
 
 exit 0
