@@ -54,7 +54,8 @@ for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls);
 	grep -i -A 1 "###$1" /tmp/.carbon_example/${url//\//_} \
 		| grep -i -A 1 "${2:-.}" >>/tmp/crab_example.$$ || true
 	if [ $(cat /tmp/crab_example.$$ | wc -l ) = 0 ]; then
-		grep -i -B 1 -A 1 "$1" /tmp/.carbon_example/${url//\//_} >>/tmp/crab_example.$$ || true
+		grep -i -B 1 -A 1 "$1" /tmp/.carbon_example/${url//\//_} \
+			| grep -i -A 1 "${2:-.}" >>/tmp/crab_example.$$ || true
 		:
 	fi
 done
