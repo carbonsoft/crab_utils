@@ -83,6 +83,7 @@ search(){
 			fi
 		done < /tmp/.carbon_example/${url//\//_}
 	done
+	return 0
 }
 
 FOUND=FALSE
