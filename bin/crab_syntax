@@ -149,8 +149,8 @@ hardbash010(){
 	cat "$f" | grep -v hardbash010 | grep -n '^[^#].*=/tmp/' \
 		&& echo 'WARNING ^^^ hardbash010 Не рекомендуется использовать переменные '\
 		'для временных файлов, лучше /tmp/binname_tmpcat.$$'
-	if egrep -q '^[^#]rm.*/tmp/.*' "$f" && \
-		! egrep 'rm.*/tmp/.*' "$f" | grep -qm1 '$$'; then
+	if egrep -q '^[^#]*rm.*/tmp/.*' "$f" && \
+		! egrep '^[^#]*rm.*/tmp/.*' "$f" | fgrep -qm1 '$$'; then
 		egrep -n 'rm.*/tmp/.*' "$f"
 		echo_error 'hardbash011 Нельзя использовать временные файлы без $$, '\
 			'лучше rm -f /tmp/binname_tmpcat.$$'
