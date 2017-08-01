@@ -56,6 +56,7 @@ sys::usage(){
 		set +e
 		echo
 		grep -H '# [-][-]help' ${__BASH_SOURCE} | sed -n 's/^.*[/]\(.*\)[ ]*[ #]*--help[ ]*\(.*\)/\1 \2/p'
+		echo
 		exit 0
 	)
 	[ "${1:-}" = "--help" ] && exit 0 || exit 255
