@@ -3,6 +3,9 @@
 set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
+[ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Example: autotest
+
 err=0
 
 for test in /opt/crab/crab_utils/test/test-*; do

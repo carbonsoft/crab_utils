@@ -12,6 +12,8 @@ sys::usage "$@"
 ### --help Usage:
 ### --help crab_syntax filename bash|cc|python|html|xml
 ### --help crab_syntax $DIR recurring
+### --help Example: crab_syntax myfile.sh
+### --help Example: crab_syntax myfile.sh bash
 
 syntax_style=${2:-bash}
 
@@ -274,6 +276,15 @@ hardbash018(){
 	return 0
 }
 
+
+hardbash019(){
+	if ! grep -qm1 "Example: "  "$f"; then
+		echo_error "hardbash019 добавьте пример исопльзования вашей программы"\
+			"Example: $f [argv] и или sys::usage "$@" и ###"\
+			" --help"
+	fi
+	return 0
+}
 ###
 for check in $( typeset -F | grep hardbash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
 	$check

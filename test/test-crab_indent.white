@@ -4,6 +4,10 @@ echo "$0 $@ [$$] START" >&2
 
 set -euEo pipefail
 
+sys::usage "$@"
+### --help Example: test-crab_indent.white
+
+
 echo test
 
 cat <<EOF

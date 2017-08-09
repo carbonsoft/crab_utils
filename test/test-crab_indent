@@ -3,6 +3,10 @@
 set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
+[ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Example: test-crab_indent
+
+
 cp -a /opt/crab/crab_utils/test/test-crab_indent.white /tmp/test-crab_indent.white.$$
 
 failed=FALSE

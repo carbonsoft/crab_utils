@@ -7,6 +7,11 @@ set +euEo pipefail
 ### hardbash006 1
 echo $0 ST#A#RT
 
+### hardbash019
+sys::usa  ge "$@"
+### --help E x a m p l e: test-crab_syntax.black
+
+
 ### hardbash001 Не выполнен crab_indent
 {
 echo indent fail

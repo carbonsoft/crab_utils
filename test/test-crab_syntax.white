@@ -7,6 +7,9 @@ echo "$0 $@ [$$] START" >&2
 ### hardbash002 Не установлен set -eu
 set -euEo pipefail
 
+### hardbash019
+sys::usage "$@"
+### --help Example: crab_syntax test-crab_syntax.white
 
 ### hardbash001 Не выполнен crab_indent
 {

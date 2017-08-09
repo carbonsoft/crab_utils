@@ -3,6 +3,9 @@
 set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
+[ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Example: test-crab_syntax
+
 
 failed=FALSE
 

@@ -8,9 +8,9 @@ sys::usage "$@"
 ### --help утилита поиска примеров http://www.opencarbon.ru/example
 ### --help и можно свои добавлять списки "$HOME/.carbon_example_custom.urls"
 ### --help Usage:
-### --help crab_example sed  - примеры sed
-### --help crab_example bash string - примеры bash подпримеры работы со строками
-### --help crab_example update - обновить кеш всех списков
+### --help Example: crab_example sed  - примеры sed
+### --help Example: crab_example bash string - примеры bash подпримеры работы со строками
+### --help Example: crab_example update - обновить кеш всех списков
 
 
 

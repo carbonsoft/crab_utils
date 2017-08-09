@@ -3,6 +3,10 @@
 set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
+[ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Локальные изменения сохранятся во бекап каталоге /opt/crab.$$
+### --help Example: crab_update
+
 create_symlink(){
 	set -eu
 	for f in /opt/crab/*/bin/crab_*; do
