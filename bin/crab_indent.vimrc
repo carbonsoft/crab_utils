@@ -47,8 +47,8 @@ set cpo&vim
 let s:indent_eof = -1
 let s:indent_echo1 = -1
 let s:indent_echo2 = -1
-
 let s:indent_slash = -1
+let s:indent_befor_skip = -1
 
 function GetShIndent()
 	let prevnum = prevnonblank(v:lnum - 1)
@@ -72,6 +72,18 @@ function GetShIndent()
 	let prevprevind = indent(prevprevnum)
 	let prevprevline = getline(prevprevnum)
 	
+	if curline =~ '^#.*'
+		\ || curline =~ "^'.*"
+		\ || curline =~ '^".*'
+		if s:indent_befor_skip =~ -1
+			let s:indent_befor_skip = prevind
+		endif
+		return 0
+	endif
+	if s:indent_befor_skip != -1
+		let prevind = s:indent_befor_skip
+		let s:indent_befor_skip = -1
+	endif
 	if prevline =~ '.*[<][<]EOF.*' && prevline !~ '^\s*#[ #]'
 		let s:indent_eof = prevind
 		return curind
@@ -156,8 +168,6 @@ function GetShIndent()
 	if prevline =~ '.*\\$' && s:indent_slash == -1
 			\ && prevline !~ '^\s*#[ #]'
 			\ && (prevprevline !~ '.*\\$' || prevprevline =~ '^\s*#[ #]' )
-			\ && curline !~ "^'.*"
-			\ && curline !~ '^".*'
 		let prevind = prevind + &sw
 		let s:indent_slash = prevind
 		return prevind
