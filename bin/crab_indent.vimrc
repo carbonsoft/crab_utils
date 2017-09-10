@@ -156,6 +156,8 @@ function GetShIndent()
 	if prevline =~ '.*\\$' && s:indent_slash == -1
 			\ && prevline !~ '^\s*#[ #]'
 			\ && (prevprevline !~ '.*\\$' || prevprevline =~ '^\s*#[ #]' )
+			\ && curline !~ "^'.*"
+			\ && curline !~ '^".*'
 		let prevind = prevind + &sw
 		let s:indent_slash = prevind
 		return prevind
