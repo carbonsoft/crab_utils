@@ -1,0 +1,109 @@
+#!/bin/bash
+
+set -euEo pipefail
+
+# echo "Bash CRAB Hook."
+myname=${0##*/}
+ref=$1
+old_commit=$2
+new_commit=$3
+crab_syntax=/opt/crab/crab_utils/bin/crab_syntax
+magic_force=SKIP_CRAB_CHECK
+magic_salt="kdfklsdfkldsjfjkteroivb"
+# echo $(pwd)
+# echo "Hook params $*"
+ret=0  # итоговый результат проверки всех файлов
+tmp_work_dir=/tmp/${myname}.$$
+git_log=$tmp_work_dir/__git_log__
+new_work_dir=$tmp_work_dir/new
+old_work_dir=$tmp_work_dir/old
+
+
+if git log -n 1 $new_commit | grep -q $magic_force; then
+	echo "$myname: Force commit push! Skip check."
+	exit 0
+fi
+
+
+get_file_type() {
+	# Определим тип файла. Вернём в stdout
+	local file=$1
+}
+
+
+check_force() {
+	# Проверим, можно ли игнорить ошибку проверки.
+	local file=$1
+}
+
+check_file() {
+	local file=$1
+	local file_type=$2
+	case "$file_type" in 
+		bash)
+			${crab_syntax} $tmp_work_dir/"$file" bash
+		;;
+		python)
+			# ${crab_syntax} $tmp_work_dir/"$file" python
+		::
+		# ...
+	esac
+	## echo 'Its a bash, check it!'
+	#if  ! /opt/crab/crab_utils/bin/crab_syntax $tmp_work_dir/"$file" bash; then
+	#	echo "$myname: Bash script Crab check failed!"
+	#	if grep -q $magic_force "$tmp_work_dir/$file"; then
+	#		echo "$myname: Force script push!"
+	#	else
+	#		ret=1
+	#		echo "$myname: Push prohibited."
+	#	fi
+	#fi
+}
+
+
+clear_tmp() {
+	[ ! -d $tmp_work_dir ] || rm -r $tmp_work_dir
+}
+
+
+clear_tmp  # Чтобы не нарваться на мусор от предыдущего фейла.
+install -d $tmp_work_dir $new_work_dir $old_work_dir
+# так делать запрещено: trap clear_tmp EXIT
+
+git log $'--pretty=format:commit\t%H' --name-status $old_commit..$new_commit > $git_log
+exec <$git_log
+while IFS=$'\t' read mode file any_tail
+do
+	# if [ "$mode" == "commit" ]; then
+	#	commit=$file
+	#	echo "Check commit $commit"
+	#el
+	if [ "$mode" == "A" ]; then
+		echo "$myname: New file: $file"
+		echo "$myname: Extract $file"
+		# Считаем, что checkout может упасть, если файла уже нет в репе. И это нормальная ситуация.
+		git --work-tree=$new_work_dir checkout $new_commit "$file" || true  # may be error if file delete
+		git --work-tree=$old_work_dir checkout $old_commit "$file" || true  # may be error if file delete
+		[ -f $new_work_dir/"$file" ] || continue  # Если файла в репе уже нет, то и проверять нечего.
+
+		file_type=$(get_file_type $new_work_dir/"$file")
+		if ! check_file "$file" "$file_type" || ! check_force "$file" "$file_type"; then
+			ret=1
+		fi
+	fi  # if new_file
+done  # while read
+
+clear_tmp
+# FORCE - secret, делать через Колю1
+# if [ $ret != 0 ]; then
+#	cat <<EOF
+# $myname: Push declined.
+# $myname: For force, include 'SKIP_CRAB_CHECK' in failed bash script as comment.
+# $myname: Or use last commit message with 'SKIP_CRAB_CHECK':
+# $myname:     git commit -m "SKIP_CRAB_CHECK" --allow-empty
+# $myname:     git push
+# EOF
+# fi
+# echo "End of Bash CRAB Hook with $ret."
+
+exit $ret
