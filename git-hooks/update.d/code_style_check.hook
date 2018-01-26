@@ -2,14 +2,17 @@
 
 set -euEo pipefail
 
-# echo "Bash CRAB Hook."
 myname=${0##*/}
 ref=$1
 old_commit=$2
 new_commit=$3
 crab_syntax=/opt/crab/crab_utils/bin/crab_syntax
-magic_force=SKIP_CRAB_CHECK
-magic_salt="kdfklsdfkldsjfjkteroivb"
+magic_force=SKIP_CODE_STYLE_CHECK
+if [ -f /etc/git_secure_salt ]; then
+	magic_salt=$(</etc/git_secure_salt)
+else
+	magic_salt='salt'
+fi
 # echo $(pwd)
 # echo "Hook params $*"
 ret=0  # итоговый результат проверки всех файлов
@@ -18,6 +21,7 @@ git_log=$tmp_work_dir/__git_log__
 new_work_dir=$tmp_work_dir/new
 old_work_dir=$tmp_work_dir/old
 
+echo "$myname: Start."
 
 if git log -n 1 $new_commit | grep -q $magic_force; then
 	echo "$myname: Force commit push! Skip check."
@@ -98,12 +102,12 @@ clear_tmp
 # if [ $ret != 0 ]; then
 #	cat <<EOF
 # $myname: Push declined.
-# $myname: For force, include 'SKIP_CRAB_CHECK' in failed bash script as comment.
-# $myname: Or use last commit message with 'SKIP_CRAB_CHECK':
-# $myname:     git commit -m "SKIP_CRAB_CHECK" --allow-empty
+# $myname: For force, include '$magic_force' in failed bash script as comment.
+# $myname: Or use last commit message with '$magic_force':
+# $myname:     git commit -m "$magic_force" --allow-empty
 # $myname:     git push
 # EOF
 # fi
-# echo "End of Bash CRAB Hook with $ret."
+# echo "$myname exit $ret."
 
 exit $ret
