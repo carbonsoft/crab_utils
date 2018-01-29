@@ -72,7 +72,7 @@ function GetShIndent()
 	let prevprevind = indent(prevprevnum)
 	let prevprevline = getline(prevprevnum)
 	
-	if curline =~ '^#.*'
+	if curline =~ '^#[^{}].*'
 		\ || curline =~ "^'.*"
 		\ || curline =~ '^".*'
 		if s:indent_befor_skip =~ -1

@@ -16,8 +16,8 @@ failed=FALSE
 	/opt/crab/crab_utils/test/test-crab_syntax.black &>/tmp/test-crab_syntax.$$ || true
 
 check_funcs=$( cat /opt/crab/crab_utils/bin/crab_syntax \
-	| grep 'hardbash[0-9][0-9][0-9]()' \
-	| sed -n  's/^\(hardbash[0-9]\{3\}\).*/\1/p' ) # '
+	| grep 'strongbash[0-9][0-9][0-9]()' \
+	| sed -n  's/^\(strongbash[0-9]\{3\}\).*/\1/p' ) # '
 
 for func in $check_funcs; do
 	if ! grep -qm1 "$func" /tmp/test-crab_syntax.$$; then
