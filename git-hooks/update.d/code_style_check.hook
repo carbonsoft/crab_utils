@@ -26,11 +26,27 @@ ret=0  # итоговый результат проверки всех файл�
 tmp_work_dir=/tmp/${myname}.$(date +%Y%m%d%H%M%S).$$
 new_work_dir=$tmp_work_dir/new
 old_work_dir=$tmp_work_dir/old
+store_success_dir=/home/gitlab/code_style_check_store  # unportable hardcode TODO: сделать конфиг!
+
 
 if git log -n 1 $new_commit | grep -q $magic_force; then
 	echo "$myname: Force commit push! Skip check."
 	exit 0
 fi
+
+
+store_success_file() {
+	# Сохраним успешно проверенные файлы для будущих свершений.
+	[ -n "$store_success_dir" ] || return 0
+	local file="$1"
+	local cwd=$(pwd)
+	local repo_name=${cwd##*/}
+	local store_dir="$store_success_dir"/"$repo_name"
+	
+	install -d "$store_dir"
+	rsync -aR $new_work_dir/./"$file" "$store_dir"
+	return 0
+}
 
 
 get_file_type() {
@@ -69,6 +85,7 @@ check_file() {
 
 	if [ ! -f $old_work_dir/"$file" ]; then
 		( set -x; ${crab_syntax} $new_work_dir/"$file" "$file_type"; )
+		store_success_file "$file"
 	else
 		# "Умная" проверка, если файл уже был в репозитории раньше.
 		# Если файл был, то это значит,
@@ -81,12 +98,13 @@ check_file() {
 		#
 		# Не нравится мне гасить вывод предварительных проверок.
 		# Но выводить пользователю кашу из 3-х проверок одного файла, тоже перебор.
-		# !!! Пока опция --maybee не работает, то проверка скипается.
+		# !!! Пока опция --maybe не работает, то проверка скипается.
 		if {
 			${crab_syntax} --maybe $old_work_dir/"$file" "$file_type" \
 			|| ${crab_syntax} --maybe $new_work_dir/"$file" "$file_type"
 		} &> /dev/null; then
 			( set -x; ${crab_syntax} $new_work_dir/"$file" "$file_type"; )
+			store_success_file "$file"
 		else
 			echo "$myname: Skip Legacy file check."
 		fi
@@ -111,9 +129,13 @@ do
 	#	commit=$file
 	#	echo "Check commit $commit"
 	# elif
-	if [ "$mode" == "A" ]; then
+
+	# Новые и изменённые файлы.
+	if [ "$mode" == "A" ] || [ "$mode" == "M" ]; then
 		echo "$myname: New file: $file"
 		echo "$myname: Extract $file"
+		# Если файл есть во временной папке, значит мы его уже проверили.
+		[ ! -f "$file" ] || continue
 		# Считаем, что checkout может дать ошибку, если файла уже нет в репе.
 		# И это нормальная ситуация. Потому игнорим ошибки checkout
 		git --work-tree=$new_work_dir checkout $new_commit "$file" || true
@@ -139,7 +161,7 @@ do
 done < <(
 	# Такой редирект в read из subshell нашёл в интернете, в мане не нашёл. Но работает.
 	# есть ещё вариант запустить coproc и read из его pipe
-	git log $'--pretty=format:commit\t%H' --name-status $old_commit..$new_commit
+	git log $'--pretty=format:commit\t%H' --name-status --revers $old_commit..$new_commit
 )
 
 clear_tmp
