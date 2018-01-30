@@ -1,6 +1,4 @@
 #!/bin/bash
-
-
 set -euEo pipefail
 
 echo "$0 $@ [$$] START" >&2
@@ -8,28 +6,30 @@ echo "$0 $@ [$$] START" >&2
 myname=${0##*/}
 
 # API git хуков подразумевает 3 параметра:
+if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
+	echo "Example: cd <git_dir> && $0 <refname> <old_commit> <new_commit>"
+fi
 ref=$1
 old_commit=$2
 new_commit=$3
 
-crab_syntax=/opt/crab/crab_utils/bin/crab_syntax
 # Magic check disabling
-magic_force=SKIP_CODE_STYLE_CHECK
+MAGIC_FORCE_STR=SKIP_CODE_STYLE_CHECK
 if [ -f /etc/git_secure_salt ]; then
-	magic_salt=$(</etc/git_secure_salt)
+	MAGIC_SALT=$(</etc/git_secure_salt)  # или сделать конфиг.
 else
-	magic_salt='salt'
+	MAGIC_SALT='salt'
 fi
 # echo $(pwd)
 # echo "Hook params $*"
 ret=0  # итоговый результат проверки всех файлов
-tmp_work_dir=/tmp/${myname}.$(date +%Y%m%d%H%M%S).$$
-new_work_dir=$tmp_work_dir/new
-old_work_dir=$tmp_work_dir/old
-store_success_dir=/home/gitlab/code_style_check_store  # unportable hardcode TODO: сделать конфиг!
+TMP_WORK_DIR=/tmp/${myname}.$(date +%Y%m%d%H%M%S).$$
+TMP_NEW_WORK_DIR=$TMP_WORK_DIR/new
+TMP_OLD_WORK_DIR=$TMP_WORK_DIR/old
+STORE_SUCCESS_DIR=/home/gitlab/code_style_check_store  # unportable hardcode TODO: сделать конфиг!
 
 
-if git log -n 1 $new_commit | grep -q $magic_force; then
+if git log -n 1 $new_commit | grep -qm1 $MAGIC_FORCE_STR; then
 	echo "$myname: Force commit push! Skip check."
 	exit 0
 fi
@@ -37,14 +37,16 @@ fi
 
 store_success_file() {
 	# Сохраним успешно проверенные файлы для будущих свершений.
-	[ -n "$store_success_dir" ] || return 0
+	# set -e здесь не работает!
+	[ -n "$STORE_SUCCESS_DIR" ] || return 0
 	local file="$1"
 	local cwd=$(pwd)
 	local repo_name=${cwd##*/}
-	local store_dir="$store_success_dir"/"$repo_name"
+	local store_dir="$STORE_SUCCESS_DIR"/"$repo_name"
 	
-	install -d "$store_dir"
-	rsync -aR $new_work_dir/./"$file" "$store_dir"
+	[ -d "$store_dir" ] || mkdir -p "$store_dir" || return 1
+	# /./ нужна для rsync, чтобы он корректно создал структуру путей.
+	rsync -aR $TMP_NEW_WORK_DIR/./"$file" "$store_dir" || return 1
 	return 0
 }
 
@@ -72,20 +74,33 @@ get_file_type() {
 
 check_force() {
 	# Проверим, можно ли игнорить ошибку проверки.
+	# set -e не работает, делаем ручной контроль.
 	local file=$1
 	local file_type=$2
+	
+	local file_magic;
+	local tmp_tail;
+
+	read file_magic tmp_tail < <(echo "${MAGIC_SALT}${file}" | md5sum) || return 1
+	grep -qm1 "${file_magic}\|${MAGIC_FORCE_STR}" $TMP_NEW_WORK_DIR/
 	return 0
 }
 
 
 check_file() {
+	set -e
 	# Проверка codestyle
 	local file=$1
 	local file_type=$2
-
-	if [ ! -f $old_work_dir/"$file" ]; then
-		( set -x; ${crab_syntax} $new_work_dir/"$file" "$file_type"; )
-		store_success_file "$file"
+	local is_new=${3:-}
+	
+	local need_check=0
+	
+	# Проверять наличие старого файла не катит.
+	# Файл извлекается, даже если его на указанный коммит не существовало.
+	# if [ ! -f $TMP_OLD_WORK_DIR/"$file" ]; then  
+	if [ -n "$is_new" ]; then
+		need_check=1
 	else
 		# "Умная" проверка, если файл уже был в репозитории раньше.
 		# Если файл был, то это значит,
@@ -99,30 +114,32 @@ check_file() {
 		# Не нравится мне гасить вывод предварительных проверок.
 		# Но выводить пользователю кашу из 3-х проверок одного файла, тоже перебор.
 		# !!! Пока опция --maybe не работает, то проверка скипается.
-		if {
-			${crab_syntax} --maybe $old_work_dir/"$file" "$file_type" \
-			|| ${crab_syntax} --maybe $new_work_dir/"$file" "$file_type"
-		} &> /dev/null; then
-			( set -x; ${crab_syntax} $new_work_dir/"$file" "$file_type"; )
-			store_success_file "$file"
+		if crab_syntax --maybe $TMP_OLD_WORK_DIR/"$file" "$file_type" \
+		&> $TMP_WORK_DIR/crab_maybe_old \
+		|| crab_syntax --maybe $TMP_NEW_WORK_DIR/"$file" "$file_type" \
+		&> $TMP_WORK_DIR/crab_maybe_new; then
+			need_check=1
 		else
 			echo "$myname: Skip Legacy file check."
 		fi
+	fi
+
+	if [ "$need_check" = "1" ]; then
+		# set -e внутри проверочных функций не работает, трап вручную.
+		bash -x crab_syntax $TMP_NEW_WORK_DIR/"$file" "$file_type" || return 1
+		# результат сохранения не чекаем, т.к. это не главный функционал.
+		# возможные проблемы будут видны в stderr.
+		store_success_file "$file"
 	fi
 	return 0
 }
 
 
-clear_tmp() {
-	[ ! -d $tmp_work_dir ] || rm -r $tmp_work_dir
-	return 0
-}
+mkdir $TMP_WORK_DIR $TMP_NEW_WORK_DIR $TMP_OLD_WORK_DIR
 
-
-# clear_tmp  # Чтобы не нарваться на мусор от предыдущего фейла.
-install -d $tmp_work_dir $new_work_dir $old_work_dir
-# так делать запрещено: trap clear_tmp EXIT
-
+# История изменения файлов между актуальной версией ветки(old) и запушенной(new).
+git log $'--pretty=format:commit\t%H' --name-status --reverse \
+	$old_commit..$new_commit > $TMP_WORK_DIR/git_log
 while IFS=$'\t' read mode file any_tail
 do
 	# if [ "$mode" == "commit" ]; then
@@ -134,48 +151,56 @@ do
 	if [ "$mode" == "A" ] || [ "$mode" == "M" ]; then
 		echo "$myname: New file: $file"
 		echo "$myname: Extract $file"
+
+		if [ "$mode" == "A" ]; then
+			is_new=1
+		else
+			is_new=
+		fi
+
 		# Если файл есть во временной папке, значит мы его уже проверили.
 		[ ! -f "$file" ] || continue
 		# Считаем, что checkout может дать ошибку, если файла уже нет в репе.
 		# И это нормальная ситуация. Потому игнорим ошибки checkout
-		git --work-tree=$new_work_dir checkout $new_commit "$file" || true
-		git --work-tree=$old_work_dir checkout $old_commit "$file" || true
+		# !! Если файл новый, то он же и извлекается по запросу на старый коммит.
+		# Нужно разбираться в поведении checkout
+		git --work-tree=$TMP_NEW_WORK_DIR checkout $new_commit "$file" || true
+		git --work-tree=$TMP_OLD_WORK_DIR checkout $old_commit "$file" || true
 
 		# Если файла в репе уже нет, то и проверять нечего.
-		[ -f $new_work_dir/"$file" ] || continue
+		# Нужны доп иследование того, как гит извлекает файлы.
+		[ -f $TMP_NEW_WORK_DIR/"$file" ] || continue
 
-		file_type=$(get_file_type $new_work_dir/"$file")
+		file_type=$(get_file_type $TMP_NEW_WORK_DIR/"$file")
 		# Если тип не поддерживается нами, то не проверяем.
 		[ -n "$file_type" ] || continue
+
 		# Если файл не проходит проверку и не форсирован, то отказ пушу.
 		# Но не выходим, а проверим оставшиеся файлы,
 		#   чтобы у пользователя был результат всех проверок.
-		echo "$myname: check $file_type file $file"
-		if ! {
-			check_file "$file" "$file_type" || check_force "$file" "$file_type"
-		} ; then
+		echo "$myname: check $file_type file $file new $is_new"
+
+		if ! check_file "$file" "$file_type" "$is_new" \
+		&& ! check_force "$file" "$file_type"; then
 			echo "$myname: --- Push prohibited! ---"
 			ret=1
 		fi
 	fi  # if new_file
-done < <(
-	# Такой редирект в read из subshell нашёл в интернете, в мане не нашёл. Но работает.
-	# есть ещё вариант запустить coproc и read из его pipe
-	git log $'--pretty=format:commit\t%H' --name-status --revers $old_commit..$new_commit
-)
+done < $TMP_WORK_DIR/git_log
 
-clear_tmp
 # FORCE - secret, делать через Колю1
 # if [ $ret != 0 ]; then
 #	cat <<EOF
 # $myname: Push declined.
-# $myname: For force, include '$magic_force' in failed bash script as comment.
-# $myname: Or use last commit message with '$magic_force':
-# $myname:     git commit -m "$magic_force" --allow-empty
+# $myname: For force, include '$MAGIC_FORCE_STR' in failed bash script as comment.
+# $myname: Or use last commit message with '$MAGIC_FORCE_STR':
+# $myname:     git commit -m "$MAGIC_FORCE_STR" --allow-empty
 # $myname:     git push
 # EOF
 # fi
 # echo "$myname exit $ret."
+
+# rm -r $TMP_WORK_DIR
 
 echo "$0 $@ [$$] SUCCESS" >&2
 exit $ret
