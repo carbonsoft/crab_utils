@@ -83,6 +83,7 @@ check_force() {
 
 	read file_magic tmp_tail < <(echo "${MAGIC_SALT}${file}" | md5sum) || return 1
 	grep -qm1 "${file_magic}\|${MAGIC_FORCE_STR}" $TMP_NEW_WORK_DIR/"$file" || return 1
+	echo "$myname: Force push file $file"
 	return 0
 }
 
@@ -148,29 +149,33 @@ do
 	#	echo "Check commit $commit"
 	# elif
 
+	# D - удалённые
 	# Новые и изменённые файлы.
 	if [ "$mode" == "A" ] || [ "$mode" == "M" ]; then
-		echo "$myname: New file: $file"
-		echo "$myname: Extract $file"
-
+		# Если файл есть во временной папке, значит мы его уже проверили.
+		if [ -f $TMP_NEW_WORK_DIR/"$file" ]; then
+			echo "$myname: Done file: $file, skip."
+			continue
+		fi
 		if [ "$mode" == "A" ]; then
+			echo "$myname: Added file: $file"
 			is_new=1
 		else
+			echo "$myname: Modified file: $file"
 			is_new=
 		fi
-
-		# Если файл есть во временной папке, значит мы его уже проверили.
-		[ ! -f "$file" ] || continue
+		echo "$myname: Extract $file"
 		# Считаем, что checkout может дать ошибку, если файла уже нет в репе.
 		# И это нормальная ситуация. Потому игнорим ошибки checkout
 		# !! Если файл новый, то он же и извлекается по запросу на старый коммит.
 		# Нужно разбираться в поведении checkout
-		git --work-tree=$TMP_NEW_WORK_DIR checkout $new_commit "$file" || true
-		git --work-tree=$TMP_OLD_WORK_DIR checkout $old_commit "$file" || true
+		git --work-tree=$TMP_NEW_WORK_DIR checkout $new_commit -- "$file" || true
+		git --work-tree=$TMP_OLD_WORK_DIR checkout $old_commit -- "$file" || true
 
-		# Если файла в репе уже нет, то и проверять нечего.
-		# Нужны доп иследование того, как гит извлекает файлы.
-		[ -f $TMP_NEW_WORK_DIR/"$file" ] || continue
+		## Если файла в репе уже нет, то и проверять нечего.
+		## Нужны доп иследование того, как гит извлекает файлы.
+		# извлекается, даже если нет... позже разрулим
+		#[ -f $TMP_NEW_WORK_DIR/"$file" ] || continue
 
 		file_type=$(get_file_type $TMP_NEW_WORK_DIR/"$file")
 		# Если тип не поддерживается нами, то не проверяем.
