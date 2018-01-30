@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euEo pipefail
+# set -x
 
 echo "$0 $@ [$$] START" >&2
 
@@ -7,7 +8,7 @@ myname=${0##*/}
 
 # API git хуков подразумевает 3 параметра:
 if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
-	echo "Example: cd <git_dir> && $0 <refname> <old_commit> <new_commit>"
+	echo "Example: (cd <git_dir> && $0 <refname> <old_commit> <new_commit>; )"
 fi
 ref=$1
 old_commit=$2
@@ -20,13 +21,12 @@ if [ -f /etc/git_secure_salt ]; then
 else
 	MAGIC_SALT='salt'
 fi
-# echo $(pwd)
 # echo "Hook params $*"
 ret=0  # итоговый результат проверки всех файлов
 TMP_WORK_DIR=/tmp/${myname}.$(date +%Y%m%d%H%M%S).$$
 TMP_NEW_WORK_DIR=$TMP_WORK_DIR/new
 TMP_OLD_WORK_DIR=$TMP_WORK_DIR/old
-STORE_SUCCESS_DIR=/home/gitlab/code_style_check_store  # unportable hardcode TODO: сделать конфиг!
+STORE_SUCCESS_DIR=/home/gitlab/code_style_check_store  # unportable hardcode. TODO: сделать конфиг!
 
 
 if git log -n 1 $new_commit | grep -qm1 $MAGIC_FORCE_STR; then
@@ -75,14 +75,14 @@ get_file_type() {
 check_force() {
 	# Проверим, можно ли игнорить ошибку проверки.
 	# set -e не работает, делаем ручной контроль.
-	local file=$1
-	local file_type=$2
+	local file="$1"
+	local file_type="$2"
 	
 	local file_magic;
 	local tmp_tail;
 
 	read file_magic tmp_tail < <(echo "${MAGIC_SALT}${file}" | md5sum) || return 1
-	grep -qm1 "${file_magic}\|${MAGIC_FORCE_STR}" $TMP_NEW_WORK_DIR/
+	grep -qm1 "${file_magic}\|${MAGIC_FORCE_STR}" $TMP_NEW_WORK_DIR/"$file" || return 1
 	return 0
 }
 
@@ -90,9 +90,9 @@ check_force() {
 check_file() {
 	set -e
 	# Проверка codestyle
-	local file=$1
-	local file_type=$2
-	local is_new=${3:-}
+	local file="$1"
+	local file_type="$2"
+	local is_new="${3:-}"
 	
 	local need_check=0
 	
@@ -126,7 +126,8 @@ check_file() {
 
 	if [ "$need_check" = "1" ]; then
 		# set -e внутри проверочных функций не работает, трап вручную.
-		bash -x crab_syntax $TMP_NEW_WORK_DIR/"$file" "$file_type" || return 1
+		echo "$myname: crab_syntax $TMP_NEW_WORK_DIR/"$file" "$file_type""
+		crab_syntax $TMP_NEW_WORK_DIR/"$file" "$file_type" || return 1
 		# результат сохранения не чекаем, т.к. это не главный функционал.
 		# возможные проблемы будут видны в stderr.
 		store_success_file "$file"
@@ -200,7 +201,7 @@ done < $TMP_WORK_DIR/git_log
 # fi
 # echo "$myname exit $ret."
 
-# rm -r $TMP_WORK_DIR
+rm -r $TMP_WORK_DIR
 
 echo "$0 $@ [$$] SUCCESS" >&2
 exit $ret
