@@ -51,58 +51,58 @@ echo_error(){
 	return 0
 }
 
-hardbash001(){
+strongbash001(){
 	### crab_indent
 	cp -f "$f" /tmp/crab_syntax_check.$$
 	chmod 666 /tmp/crab_syntax_check.$$
 	crab_indent /tmp/crab_syntax_check.$$ "$syntax_style" &>/tmp/crab_indent_out.$$
 	if ! cmp /tmp/crab_syntax_check.$$ "$f"; then
 		cat /tmp/crab_indent_out.$$
-		echo_error 'hardbash001 Не выполнен crab_indent'
+		echo_error 'strongbash001 Не выполнен crab_indent'
 	fi
 	rm -f /tmp/crab_indent_out.$$
 	rm -f /tmp/crab_syntax_check.$$
 	return 0
 }
 
-hardbash002(){
+strongbash002(){
 	if ! head -n 10 "$f" | grep -q '^set -euEo pipefail' \
 		&& ! grep -qm1 '::carbon.sys' "$f"; then
 		echo_error\
-			'hardbash002 Не установлен set -euEo pipefail '\
+			'strongbash002 Не установлен set -euEo pipefail '\
 			'как работать с pipefail: a|b|c|d || true '
 	fi
 	return 0
 }
 
-hardbash003(){
+strongbash003(){
 	egrep -n '^[^#].*(if|&&|\|\|).* \|\| true' "$f" &&\
-		echo_error 'hardbash003 Нельзя использовать || true в условных выражениях'
+		echo_error 'strongbash003 Нельзя использовать || true в условных выражениях'
 	return 0
 }
 
-hardbash004(){
+strongbash004(){
 	grep -n 'else' -A 1 "$f" | egrep "^[0-9$__SPACE-]*true" \
-		&& echo_error 'hardbash004 Нельзя использовать else true в условных выражениях'
+		&& echo_error 'strongbash004 Нельзя использовать else true в условных выражениях'
 	return 0
 }
 
-hardbash005(){
+strongbash005(){
 	### todo обрабатывать отдельно каждую функцию
 	count_func=$( grep '()[ ]*{' "$f" | wc -l || true ) # '
 	count_end_return=$( grep 'return' -A 1 "$f" | grep '^}' | wc -l || true )
 	[ $count_func != $count_end_return ] \
 		&& echo_error \
-		'hardbash005 $count_func!=$count_end_return В конце каждой функции должен быть '\
+		'strongbash005 $count_func!=$count_end_return В конце каждой функции должен быть '\
 		'return 0 или return $ret'
 	return 0
 }
 
-hardbash006(){
+strongbash006(){
 	if ! tail -n 2 "$f" | head -n 1 | grep -q '$0 $@ \[$$\] SUCCESS'\
 		|| ! grep -q '$0 $@ \[$$\] START' "$f"; then
 		grep -qm1 '::carbon.sys' "$f" && return 0
-		echo_error 'hardbash006 В начале каждого файла должен быть:
+		echo_error 'strongbash006 В начале каждого файла должен быть:
 		echo "$0 $@ [$$] START" >&2
 		BODY
 		В конце каждого файла должен быть:
@@ -123,9 +123,9 @@ hardbash006(){
 	return 0
 }
 
-hardbash007(){
+strongbash007(){
 	if ! tail -n 1 "$f" | grep -q 'exit 0'; then
-		echo_error 'hardbash007 В конце каждого файла должен быть:
+		echo_error 'strongbash007 В конце каждого файла должен быть:
 		exit 0
 		или для библиотек:
 		# exit 0
@@ -134,33 +134,33 @@ hardbash007(){
 	return 0
 }
 
-hardbash008(){
+strongbash008(){
 	head -n 1 "$f" | grep -qm1 '#!/bin/bash' \
-		|| echo_error 'hardbash008 Обязательно использовать #!/bin/bash даже в include'
+		|| echo_error 'strongbash008 Обязательно использовать #!/bin/bash даже в include'
 	return 0
 }
 
-hardbash009(){
+strongbash009(){
 	grep -n 'let[^.]*=.*' "$f" \
 		&& echo_error \
-		'hardbash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())'
+		'strongbash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())'
 	return 0
 }
 
-hardbash010(){
-	cat "$f" | grep -v hardbash010 | grep -n '^[^#].*=/tmp/' \
-		&& echo 'WARNING ^^^ hardbash010 Не рекомендуется использовать переменные '\
+strongbash010(){
+	cat "$f" | grep -v strongbash010 | grep -n '^[^#].*=/tmp/' \
+		&& echo 'WARNING ^^^ strongbash010 Не рекомендуется использовать переменные '\
 		'для временных файлов, лучше /tmp/binname_tmpcat.$$'
 	if egrep -q '^[^#]*rm.*/tmp/.*' "$f" && \
 		! egrep '^[^#]*rm.*/tmp/.*' "$f" | fgrep -qm1 '$$'; then
 		egrep -n 'rm.*/tmp/.*' "$f"
-		echo_error 'hardbash011 Нельзя использовать временные файлы без $$, '\
+		echo_error 'strongbash011 Нельзя использовать временные файлы без $$, '\
 			'лучше rm -f /tmp/binname_tmpcat.$$'
 	fi
 	return 0
 }
 
-hardbash011(){
+strongbash011(){
 	indent_max=0
 	indent_max_lnum=0
 	local l=0
@@ -177,15 +177,15 @@ hardbash011(){
 	if (( $indent_max > 5 )); then
 		grep -n . "$f" | grep "^$indent_max_lnum:"
 		echo_error \
-			"hardbash011 слишком большая глубина(indent=$indent_max), "\
+			"strongbash011 слишком большая глубина(indent=$indent_max), "\
 			"используйте ранний return или сделайте подфункции"
 	fi
 	return 0
 }
 
-hardbash012(){
+strongbash012(){
 	grep -n '.*|[ ]*[\]$' "$f"  \
-		&& echo_error 'hardbash012 pipe в "| \" требуется вынести на следующую строку.
+		&& echo_error 'strongbash012 pipe в "| \" требуется вынести на следующую строку.
 	Пример:
 	cat 123 | grep 123 \
 		| while read t; do echo 123; done
@@ -193,14 +193,14 @@ hardbash012(){
 	return 0
 }
 
-hardbash013(){
+strongbash013(){
 	grep -n "^[$__SPACE]*#[^ !#{}]." "$f" \
-		&& echo_error 'hardbash013 ставьте пробел после # или используйте #} #{ для ошибок indent'
+		&& echo_error 'strongbash013 ставьте пробел после # или используйте #} #{ для ошибок indent'
 	return 0
 }
 
 MAX_FSIZE=64
-hardbash014(){
+strongbash014(){
 	local n=0
 	local fstart=0
 	local fsize=0
@@ -232,61 +232,61 @@ hardbash014(){
 	done < "$f"
 	[ $fsize_error = TRUE ] \
 		&& echo_error \
-		"hardbash014 Слишком большая функция больше $MAX_FSIZE строк, "\
+		"strongbash014 Слишком большая функция больше $MAX_FSIZE строк, "\
 		"выделите подфункции __fname"
 	return 0
 }
 
 
-hardbash015(){
+strongbash015(){
 	fsize=$(cat "$f" | wc -l )
 	fcomm_size=$( grep "^[$__SPACE]*#.*" "$f" | wc -l || true )
 	fcount=$( grep '()[ ]*{' "$f" | wc -l || true ) # ' #}
 	fcount=$(( fcount + 1 ))
 	if (( (fsize-fcomm_size)/fcount > $MAX_FSIZE )); then
 		echo_error \
-			"hardbash015 Слишком большой линейный файл больше $MAX_FSIZE строк, "\
+			"strongbash015 Слишком большой линейный файл больше $MAX_FSIZE строк, "\
 			"разбейте на функции"
 	fi
 	return 0
 }
-hardbash016(){
+strongbash016(){
 	egrep -n ".*[$__SPACE]\$" "$f" \
-		&& echo_error 'hardbash016 Уберите конечные пробелы и tab'
+		&& echo_error 'strongbash016 Уберите конечные пробелы и tab'
 	return 0
 }
 
 MAX_CHARS=100
-hardbash017(){
+strongbash017(){
 	while IFS='' read -r line; do
 		chars_count=$( echo "$line" | wc -m  || true )
 		if [ $chars_count -gt $MAX_CHARS ]; then
 			echo "$line"
 			echo_error \
-				"hardbash017 длина строки больше $MAX_CHARS используйте перенос \\ "\
+				"strongbash017 длина строки больше $MAX_CHARS используйте перенос \\ "\
 				"примеры переносов:\necho_suc \"aaaaaaaaaaaaaaaaaa\"\\ \n\"bbbbbbbb\" "
 		fi
 	done < "$f"
 	return 0
 }
 
-hardbash018(){
+strongbash018(){
 	egrep -n  "^[$__SPACE]*[^#]+.*[^ 0-9)&>$__SPACE]>[ ]*+[^ \$\"'[]+"  "$f" \
-		&& echo_error 'hardbash018 поставьте пробел перед "text >oo"'
+		&& echo_error 'strongbash018 поставьте пробел перед "text >oo"'
 	return 0
 }
 
 
-hardbash019(){
+strongbash019(){
 	if ! grep -qm1 "Example: "  "$f"; then
-		echo_error "hardbash019 добавьте пример исопльзования вашей программы"\
+		echo_error "strongbash019 добавьте пример исопльзования вашей программы"\
 			"Example: $f [argv] и или sys::usage "$@" и ###"\
 			" --help"
 	fi
 	return 0
 }
 ###
-for check in $( typeset -F | grep hardbash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
+for check in $( typeset -F | grep strongbash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
 	$check
 done
 

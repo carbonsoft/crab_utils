@@ -1,33 +1,35 @@
 #!/bin/bash
-
+#{
+	asdads
+#}
 echo "$0 $@ [$$] START" >&2
 
-### hardbash008 Обязательно использовать #!/bin/bash даже в include'
+### strongbash008 Обязательно использовать #!/bin/bash даже в include'
 
-### hardbash002 Не установлен set -eu
+### strongbash002 Не установлен set -eu
 set -euEo pipefail
 
-### hardbash019
+### strongbash019
 sys::usage "$@"
 ### --help Example: crab_syntax test-crab_syntax.white
 
-### hardbash001 Не выполнен crab_indent
+### strongbash001 Не выполнен crab_indent
 {
 	echo indent fail
 }
 
 
-### hardbash003 Нельзя использовать || true в условных выражениях
+### strongbash003 Нельзя использовать || true в условных выражениях
 [ 1 = 2 ] && echo yes || echo no
 
-### hardbash004 Нельзя использовать else true в условных выражениях
+### strongbash004 Нельзя использовать else true в условных выражениях
 if false; then
 	echo yes
 else
 	echo no
 fi
 
-### hardbash005 $count_func!=$count_end_return
+### strongbash005 $count_func!=$count_end_return
 ### В конце каждой функции должен быть return 0 или return $ret'
 FAIL005(){
 	[ 1 = 2 ] && return 1
@@ -43,17 +45,17 @@ FAIL005_1(){
 }
 
 
-### hardbash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())
+### strongbash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())
 y=$((y+1))
 
-### hardbash010 Не рекомендуется использовать переменные для временных файлов,
+### strongbash010 Не рекомендуется использовать переменные для временных файлов,
 ### лучше /tmp/binname_tmpcat.$$
 rm -f /tmp/test-crab_syntax_check.black.$$
 
-### hardbash011 Нельзя использовать временные файлы без $$, лучше rm -f /tmp/binname_tmpcat.$$
+### strongbash011 Нельзя использовать временные файлы без $$, лучше rm -f /tmp/binname_tmpcat.$$
 rm -f /tmp/test-crab_syntax_check.black.$$
 
-### hardbash011 слишком большая глубина >5
+### strongbash011 слишком большая глубина >5
 FAIL011(){
 	{
 		{
@@ -67,11 +69,12 @@ FAIL011(){
 	return 0
 }
 
-### hardbash012 pipe в "| \" требуется вынести на следующую строку.
+### strongbash012 pipe в "| \" требуется вынести на следующую строку.
 echo yes | cat \
 	| cat
 
-### hardbash013 ставьте пробел после # или используйте #} для ошибок indent'
+ls
+### strongbash013 ставьте пробел после # или используйте #} для ошибок indent'
 # коммент без пробела
 ## кк
 ### ккк
@@ -79,7 +82,7 @@ echo yes | cat \
 	echo
 #}
 
-### "hardbash014 Слишком большая функция больше 64 строк, выделите подфункции __f"
+### "strongbash014 Слишком большая функция больше 64 строк, выделите подфункции __f"
 FAIL014(){
 	echo 1
 	echo 1
@@ -145,7 +148,7 @@ FAIL014(){
 	return 0
 }
 
-### hardbash015 Слишком большой линейный файл больше 64 строк, разбейте на функции
+### strongbash015 Слишком большой линейный файл больше 64 строк, разбейте на функции
 echo 2
 echo 2
 echo 2
@@ -234,13 +237,13 @@ echo 2
 echo 2
 echo 2
 
-### hardbash016 Уберите конечные пробелы и tab
+### strongbash016 Уберите конечные пробелы и tab
 echo yes
 echo yes
 
-### hardbash006  В конце каждого файла должен быть echo SUCCES
+### strongbash006  В конце каждого файла должен быть echo SUCCES
 echo S#U#C#C#E#S#S
 
-### hardbash007  В конце каждого файла должен быть exit 0
+### strongbash007  В конце каждого файла должен быть exit 0
 echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
