@@ -1,0 +1,159 @@
+#!/bin/bash
+
+
+set -euEo pipefail
+
+echo "$0 $@ [$$] START" >&2
+
+myname=${0##*/}
+
+# API git хуков подразумевает 3 параметра:
+ref=$1
+old_commit=$2
+new_commit=$3
+
+crab_syntax=/opt/crab/crab_utils/bin/crab_syntax
+# Magic check disabling
+magic_force=SKIP_CODE_STYLE_CHECK
+if [ -f /etc/git_secure_salt ]; then
+	magic_salt=$(</etc/git_secure_salt)
+else
+	magic_salt='salt'
+fi
+# echo $(pwd)
+# echo "Hook params $*"
+ret=0  # итоговый результат проверки всех файлов
+tmp_work_dir=/tmp/${myname}.$(date +%Y%m%d%H%M%S).$$
+new_work_dir=$tmp_work_dir/new
+old_work_dir=$tmp_work_dir/old
+
+if git log -n 1 $new_commit | grep -q $magic_force; then
+	echo "$myname: Force commit push! Skip check."
+	exit 0
+fi
+
+
+get_file_type() {
+	# Определим тип файла. Вернём в stdout
+	# Возвращаемый тип, должен поддерживаться crab_syntax
+	# Возвращаем только те типы, которые надо проверять.
+	local file="$1"
+	local file_type;
+
+	file_mime_type=$(file -bi "$file")
+
+	case "$file_mime_type" in
+	text/x-shellscript*)
+		echo bash
+		;;
+	# text/x-python*)
+	#	echo python
+	#	;;
+	esac
+	return 0
+}
+
+
+check_force() {
+	# Проверим, можно ли игнорить ошибку проверки.
+	local file=$1
+	local file_type=$2
+	return 0
+}
+
+
+check_file() {
+	# Проверка codestyle
+	local file=$1
+	local file_type=$2
+
+	if [ ! -f $old_work_dir/"$file" ]; then
+		( set -x; ${crab_syntax} $new_work_dir/"$file" "$file_type"; )
+	else
+		# "Умная" проверка, если файл уже был в репозитории раньше.
+		# Если файл был, то это значит,
+		#   что он добавлен после хука и полностью прошёл проверку.
+		# Либо он был до внедрения хука и его соответствие code style неизвестно.
+		# Если старый или новый файлы соответствует базовым правилам карбон,
+		#   то тогда делаем полный чек.
+		# Иначе считаем файл legacy и не соответствующим правилам карбон.
+		#   Молча закрывая глаза на legacy.
+		#
+		# Не нравится мне гасить вывод предварительных проверок.
+		# Но выводить пользователю кашу из 3-х проверок одного файла, тоже перебор.
+		# !!! Пока опция --maybee не работает, то проверка скипается.
+		if {
+			${crab_syntax} --maybe $old_work_dir/"$file" "$file_type" \
+			|| ${crab_syntax} --maybe $new_work_dir/"$file" "$file_type"
+		} &> /dev/null; then
+			( set -x; ${crab_syntax} $new_work_dir/"$file" "$file_type"; )
+		else
+			echo "$myname: Skip Legacy file check."
+		fi
+	fi
+	return 0
+}
+
+
+clear_tmp() {
+	[ ! -d $tmp_work_dir ] || rm -r $tmp_work_dir
+	return 0
+}
+
+
+# clear_tmp  # Чтобы не нарваться на мусор от предыдущего фейла.
+install -d $tmp_work_dir $new_work_dir $old_work_dir
+# так делать запрещено: trap clear_tmp EXIT
+
+while IFS=$'\t' read mode file any_tail
+do
+	# if [ "$mode" == "commit" ]; then
+	#	commit=$file
+	#	echo "Check commit $commit"
+	# elif
+	if [ "$mode" == "A" ]; then
+		echo "$myname: New file: $file"
+		echo "$myname: Extract $file"
+		# Считаем, что checkout может дать ошибку, если файла уже нет в репе.
+		# И это нормальная ситуация. Потому игнорим ошибки checkout
+		git --work-tree=$new_work_dir checkout $new_commit "$file" || true
+		git --work-tree=$old_work_dir checkout $old_commit "$file" || true
+
+		# Если файла в репе уже нет, то и проверять нечего.
+		[ -f $new_work_dir/"$file" ] || continue
+
+		file_type=$(get_file_type $new_work_dir/"$file")
+		# Если тип не поддерживается нами, то не проверяем.
+		[ -n "$file_type" ] || continue
+		# Если файл не проходит проверку и не форсирован, то отказ пушу.
+		# Но не выходим, а проверим оставшиеся файлы,
+		#   чтобы у пользователя был результат всех проверок.
+		echo "$myname: check $file_type file $file"
+		if ! {
+			check_file "$file" "$file_type" || check_force "$file" "$file_type"
+		} ; then
+			echo "$myname: --- Push prohibited! ---"
+			ret=1
+		fi
+	fi  # if new_file
+done < <(
+	# Такой редирект в read из subshell нашёл в интернете, в мане не нашёл. Но работает.
+	# есть ещё вариант запустить coproc и read из его pipe
+	git log $'--pretty=format:commit\t%H' --name-status $old_commit..$new_commit
+)
+
+clear_tmp
+# FORCE - secret, делать через Колю1
+# if [ $ret != 0 ]; then
+#	cat <<EOF
+# $myname: Push declined.
+# $myname: For force, include '$magic_force' in failed bash script as comment.
+# $myname: Or use last commit message with '$magic_force':
+# $myname:     git commit -m "$magic_force" --allow-empty
+# $myname:     git push
+# EOF
+# fi
+# echo "$myname exit $ret."
+
+echo "$0 $@ [$$] SUCCESS" >&2
+exit $ret
