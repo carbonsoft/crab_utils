@@ -14,8 +14,11 @@ check_file_ext() {
 	local file_ext="${file_base##*.}"
 
 	case $file_ext in
-	sql|iso|img|jpeg|gif|tiff|pgf|html|htm|bin|img|mpeg|mp4\
-	|tar|tgz|gz|bzip2|bz2|xz|rpm|deb|so|pyc|zip)
+	sql|iso|img|jpeg|gif|tiff|pgf|html|htm|bin|img|mpeg|mp4)
+		echo skip
+		;;
+
+	tar|tgz|gz|bzip2|bz2|xz|rpm|deb|so|pyc|zip)
 		echo skip
 		;;
 	esac
@@ -31,7 +34,7 @@ check_file_size() {
 	local ls_info ls_file any_tail ls_mode ls_type ls_sha ls_size ls_info_tail
 	# Получим размер файла от гит.
 	# формат вывода: man git-ls-tree
-	# <mode> SP <type> SP <object> SP <object size> TAB <file>
+# <mode> SP <type> SP <object> SP <object size> TAB <file>
 	# По факту пробелов мржет быть несколько.
 	git ls-tree -l "$commit" -- "$file" > $TMP_WORK_DIR/ls-tree
 	while IFS=$'\t' read -r ls_info ls_file any_tail; do
@@ -77,9 +80,9 @@ get_file_type() {
 	text/x-shellscript*)
 		echo bash
 		;;
-	# text/x-python*)
-	# 	echo python
-	# 	;;
+# 	text/x-python*)
+# 		echo python
+# 		;;
 	esac
 	return 0
 }
@@ -148,7 +151,7 @@ read -r MAGIC_FORCE_STR tmp_tail < <(echo "${MAGIC_SALT}$(date +%Y%m%d)" | md5su
 
 # API git хуков подразумевает 3 параметра:
 if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
-	echo "Example: ( cd <git_dir> && $0 <refname> <old_commit> <new_commit>; )"
+	echo "Example: ( cd git_dir && $0 refname old_commit new_commit; )"
 	echo "Today Hash: ${MAGIC_FORCE_STR}"
 	exit 1
 fi
@@ -225,8 +228,7 @@ done < $TMP_WORK_DIR/git_log
 rm -r --one-file-system $TMP_WORK_DIR
 
 if [ $CHECK_ERR_COUNT != 0 ]; then
-	echo "RTFM http://opencarbon.ru/%D1%81%D0%BE%D0%B3"\
-"%D0%BB%D0%B0%D1%88%D0%B5%D0%BD%D0%B8%D1%8F_%D0%BA%D0%BE%D0%B4%D0%B0:strongbash#"
+	echo "RTFM http://opencarbon.ru/соглашения_кода:strongbash"
 	echo "or GOTO admin."
 	echo "$0 $@ [$$] CHECK FAILED, $CHECK_ERR_COUNT files with errors." >&2
 	exit 1
