@@ -142,8 +142,7 @@ mkdir $TMP_WORK_DIR $TMP_NEW_WORK_DIR $TMP_OLD_WORK_DIR
 # История изменения файлов между актуальной версией ветки(old) и запушенной(new).
 git log $'--pretty=format:commit\t%H' --name-status --reverse \
 	$old_commit..$new_commit > $TMP_WORK_DIR/git_log
-while IFS=$'\t' read mode file any_tail
-do
+while IFS=$'\t' read mode file any_tail; do
 	# if [ "$mode" == "commit" ]; then
 	#	commit=$file
 	#	echo "Check commit $commit"
