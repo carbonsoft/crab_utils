@@ -15,6 +15,14 @@ sys::usage "$@"
 ### --help Example: crab_syntax myfile.sh
 ### --help Example: crab_syntax myfile.sh bash
 
+# Проверка базовых правил.
+maybe=0
+
+if [ "${1:-}" = "--maybe" ]; then
+	maybe=1
+	shift
+fi
+
 syntax_style=${2:-bash}
 
 if [ -d "$1" ]; then
@@ -286,9 +294,16 @@ strongbash019(){
 	return 0
 }
 ###
-for check in $( typeset -F | grep strongbash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
-	$check
-done
+if [ $maybe == 1 ]; then
+	strongbash001
+	strongbash002
+	strongbash006
+	strongbash017
+else
+	for check in $( typeset -F | grep strongbash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
+		$check
+	done
+fi
 
 [ "$error_msg" != "" ]  && echo -e "$error_msg"
 [ $ERROR != 0  ] && { echo FAILED; exit 1; }
