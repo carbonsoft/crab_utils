@@ -231,7 +231,8 @@ if [ $CHECK_ERR_COUNT != 0 ]; then
 	echo "RTFM http://opencarbon.ru/соглашения_кода:strongbash"
 	echo "or GOTO admin."
 	echo "Если вы уверены, что указанные файлы не должны соответствовать краб,"
-	echo "тогда добавте в последний коммит ADMIN_MERGE"
+	echo "тогда добавьте в сообщение последнего коммита ADMIN_MERGE"
+	echo "Администратор примет ваши изменения в ручном режиме."
 	echo "$0 $@ [$$] CHECK FAILED, $CHECK_ERR_COUNT files with errors." >&2
 	exit 1
 fi
