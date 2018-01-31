@@ -8,15 +8,15 @@ echo "$0 $@ [$$] START" >&2
 store_success_file() {
 	# Сохраним успешно проверенные файлы для будущих свершений.
 	local file="$1"
-	local cwd=$(pwd)
-	local repo_name=${cwd##*/}
-	local store_dir="$STORE_SUCCESS_DIR"/"$repo_name"
+	local cwd="$(pwd)"
+	local repo_name="${cwd##*/}"
+	local store_dir="$STORE_SUCCESS_DIR/$repo_name"
 	
 	if [ ! -d "$store_dir" ]; then
 		mkdir -p "$store_dir"
 	fi
 	# /./ нужна для rsync, чтобы он корректно создал структуру путей.
-	rsync -aR $TMP_NEW_WORK_DIR/./"$file" "$store_dir"
+	rsync -aR "$TMP_NEW_WORK_DIR/./$file" "$store_dir"
 	return 0
 }
 
@@ -46,43 +46,43 @@ check_file() {
 	# Проверка codestyle
 	local file="$1"
 	local file_type="$2"
-	local is_new="${3:-}"
-	
-	# Проверять наличие старого файла не катит.
-	# Файл извлекается, даже если его на указанный коммит не существовало.
-	# if [ ! -f $TMP_OLD_WORK_DIR/"$file" ]; then  
-	if [ -n "$is_new" ]; then
-		need_check=1
-	else
-		# "Умная" проверка, если файл уже был в репозитории раньше.
-		# Если файл был, то это значит,
-		#   что он добавлен после хука и полностью прошёл проверку.
-		# Либо он был до внедрения хука и его соответствие code style неизвестно.
-		# Если старый или новый файлы соответствует базовым правилам карбон,
-		#   то тогда делаем полный чек.
-		# Иначе считаем файл legacy и не соответствующим правилам карбон.
-		#   Молча закрывая глаза на legacy.
-		#
-		# Не нравится мне гасить вывод предварительных проверок.
-		# Но выводить пользователю кашу из 3-х проверок одного файла, тоже перебор.
-		# !!! Пока опция --maybe не работает, то проверка скипается.
-		if crab_syntax --maybe $TMP_OLD_WORK_DIR/"$file" "$file_type" \
-		&> $TMP_WORK_DIR/crab_maybe_old \
-		|| crab_syntax --maybe $TMP_NEW_WORK_DIR/"$file" "$file_type" \
-		&> $TMP_WORK_DIR/crab_maybe_new; then
-			need_check=1
+
+	# "Умная" проверка:
+	# если файла не было в репозитории раньше, то он новый и обязан пройти полную проверку.
+	# Если файл был, то он мог проходить проверку, а мог не проходить.
+	# Если старый или новый файлы соответствует базовым правилам карбон,
+	#   то тогда делаем полный чек.
+	# Иначе считаем файл legacy и не соответствующим правилам карбон.
+	#   Молча закрывая глаза на legacy.
+	if [ ! -f "$TMP_OLD_WORK_DIR/$file" ]
+	|| crab_syntax --maybe "$TMP_OLD_WORK_DIR/$file" "$file_type" \
+	&> "$TMP_OLD_WORK_DIR/${file}.crab_maybe"
+	|| crab_syntax --maybe "$TMP_NEW_WORK_DIR/$file" "$file_type" \
+	&> "$TMP_NEW_WORK_DIR/${file}.crab_maybe"; then
+		echo "$myname: --- crab_syntax $TMP_NEW_WORK_DIR/$file $file_type ---"
+		if crab_syntax "$TMP_NEW_WORK_DIR/$file" "$file_type"; then
+			store_success_file "$file"
 		else
-			echo "$myname: Skip Legacy file check."
+			echo "$myname: --- check failed ---"
+			CHECK_ERR_COUNT=$(($CHECK_ERR_COUNT+1))
 		fi
 	fi
+	return 0
+}
 
-	if [ "$need_check" = "1" ]; then
-		# set -e внутри проверочных функций не работает, трап вручную.
-		echo "$myname: crab_syntax $TMP_NEW_WORK_DIR/"$file" "$file_type""
-		crab_syntax $TMP_NEW_WORK_DIR/"$file" "$file_type" || return 1
-		# результат сохранения не чекаем, т.к. это не главный функционал.
-		# возможные проблемы будут видны в stderr.
-		store_success_file "$file"
+
+git_checkout() {
+	# Считаем, что checkout может дать ошибку, если файла уже нет в репе.
+	# И это нормальная ситуация.
+	local commit="$1"
+	local file="$2"
+	local dir="$3"
+
+	if ! git --work-tree=$dir checkout $commit -- "$file" 2> $TMP_WORK_DIR/git_checkout_stderr; then
+		if ! grep -qm1 'error: pathspec .* did not match any file'; then
+			echo "git checkout error: $(<$TMP_WORK_DIR/git_checkout_stderr)" >&2
+			return 1
+		fi
 	fi
 	return 0
 }
@@ -145,23 +145,9 @@ while IFS=$'\t' read -r mode file any_tail; do
 			echo "$myname: Done file: $file, skip."
 			continue
 		fi
-		if [ "$mode" == "A" ]; then
-			echo "$myname: Added file: $file"
-			is_new=1
-		else
-			echo "$myname: Modified file: $file"
-			is_new=
-		fi
 		echo "$myname: Extract $file"
-		# Считаем, что checkout может дать ошибку, если файла уже нет в репе.
-		# И это нормальная ситуация. Потому игнорим ошибки checkout
-		# !! Если файл новый, то он же и извлекается по запросу на старый коммит.
-		# Нужно разбираться в поведении checkout
 		git_checkout $new_commit "$file" $TMP_NEW_WORK_DIR
 		git_checkout $old_commit "$file" $TMP_OLD_WORK_DIR
-		# mk func
-		# git --work-tree=$TMP_NEW_WORK_DIR checkout $new_commit -- "$file" || true
-		# git --work-tree=$TMP_OLD_WORK_DIR checkout $old_commit -- "$file" || true
 
 		## Если файла в репе уже нет, то и проверять нечего.
 		if [ ! -f $TMP_NEW_WORK_DIR/"$file" ]; then
@@ -175,23 +161,11 @@ while IFS=$'\t' read -r mode file any_tail; do
 		fi
 
 		echo "$myname: check $file_type file $file new $is_new"
-		check_file "$file" "$file_type" "$is_new"
+		check_file "$file" "$file_type"
 	fi  # if new_file
 done < $TMP_WORK_DIR/git_log
 
-# FORCE - secret, делать через Колю1
-# if [ $ret != 0 ]; then
-#	cat <<EOF
-# $myname: Push declined.
-# $myname: For force, include '$MAGIC_FORCE_STR' in failed bash script as comment.
-# $myname: Or use last commit message with '$MAGIC_FORCE_STR':
-# $myname:     git commit -m "$MAGIC_FORCE_STR" --allow-empty
-# $myname:     git push
-# EOF
-# fi
-# echo "$myname exit $ret."
-
-rm -r $TMP_WORK_DIR
+rm -r --one-file-system $TMP_WORK_DIR
 
 if [ $CHECK_ERR_COUNT != 0 ]; then
 	echo "RTFM http://opencarbon.ru/"\
@@ -199,6 +173,7 @@ if [ $CHECK_ERR_COUNT != 0 ]; then
 	"_%D0%BA%D0%BE%D0%B4%D0%B0:strongbash#"
 	echo "or GOTO admin."
 	echo "$0 $@ [$$] CHECK FAILED, $CHECK_ERR_COUNT files with errors." >&2
+	exit 1
 fi
 
 echo "$0 $@ [$$] SUCCESS" >&2
