@@ -37,8 +37,8 @@ get_file_type() {
 	# text/x-python*)
 	#	echo python
 	#	;;
-	esac
-	return 0
+esac
+return 0
 }
 
 
@@ -54,11 +54,11 @@ check_file() {
 	#   то тогда делаем полный чек.
 	# Иначе считаем файл legacy и не соответствующим правилам карбон.
 	#   Молча закрывая глаза на legacy.
-	if [ ! -f "$TMP_OLD_WORK_DIR/$file" ]
+	if [ ! -f "$TMP_OLD_WORK_DIR/$file" ] \
 		|| crab_syntax --maybe "$TMP_OLD_WORK_DIR/$file" "$file_type" \
-			&> "$TMP_OLD_WORK_DIR/${file}.crab_maybe"
+		&> "$TMP_OLD_WORK_DIR/${file}.crab_maybe" \
 		|| crab_syntax --maybe "$TMP_NEW_WORK_DIR/$file" "$file_type" \
-			&> "$TMP_NEW_WORK_DIR/${file}.crab_maybe"; then
+		&> "$TMP_NEW_WORK_DIR/${file}.crab_maybe"; then
 
 		echo "$myname: --- crab_syntax $TMP_NEW_WORK_DIR/$file $file_type ---"
 		if crab_syntax "$TMP_NEW_WORK_DIR/$file" "$file_type"; then
