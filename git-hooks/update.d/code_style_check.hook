@@ -80,8 +80,8 @@ get_file_type() {
 	# text/x-python*)
 	# 	echo python
 	# 	;;
-esac
-return 0
+	esac
+	return 0
 }
 
 
