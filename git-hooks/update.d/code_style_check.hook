@@ -4,49 +4,19 @@ set -euEo pipefail
 
 echo "$0 $@ [$$] START" >&2
 
-myname=${0##*/}
-
-# API git хуков подразумевает 3 параметра:
-if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
-	echo "Example: (cd <git_dir> && $0 <refname> <old_commit> <new_commit>; )"
-fi
-ref=$1
-old_commit=$2
-new_commit=$3
-
-# Magic check disabling
-MAGIC_FORCE_STR=SKIP_CODE_STYLE_CHECK
-if [ -f /etc/git_secure_salt ]; then
-	MAGIC_SALT=$(</etc/git_secure_salt)  # или сделать конфиг.
-else
-	MAGIC_SALT='salt'
-fi
-# echo "Hook params $*"
-ret=0  # итоговый результат проверки всех файлов
-TMP_WORK_DIR=/tmp/${myname}.$(date +%Y%m%d%H%M%S).$$
-TMP_NEW_WORK_DIR=$TMP_WORK_DIR/new
-TMP_OLD_WORK_DIR=$TMP_WORK_DIR/old
-STORE_SUCCESS_DIR=/home/gitlab/code_style_check_store  # unportable hardcode. TODO: сделать конфиг!
-
-
-if git log -n 1 $new_commit | grep -qm1 $MAGIC_FORCE_STR; then
-	echo "$myname: Force commit push! Skip check."
-	exit 0
-fi
-
 
 store_success_file() {
 	# Сохраним успешно проверенные файлы для будущих свершений.
-	# set -e здесь не работает!
-	[ -n "$STORE_SUCCESS_DIR" ] || return 0
 	local file="$1"
 	local cwd=$(pwd)
 	local repo_name=${cwd##*/}
 	local store_dir="$STORE_SUCCESS_DIR"/"$repo_name"
 	
-	[ -d "$store_dir" ] || mkdir -p "$store_dir" || return 1
+	if [ ! -d "$store_dir" ]; then
+		mkdir -p "$store_dir"
+	fi
 	# /./ нужна для rsync, чтобы он корректно создал структуру путей.
-	rsync -aR $TMP_NEW_WORK_DIR/./"$file" "$store_dir" || return 1
+	rsync -aR $TMP_NEW_WORK_DIR/./"$file" "$store_dir"
 	return 0
 }
 
@@ -72,30 +42,11 @@ get_file_type() {
 }
 
 
-check_force() {
-	# Проверим, можно ли игнорить ошибку проверки.
-	# set -e не работает, делаем ручной контроль.
-	local file="$1"
-	local file_type="$2"
-	
-	local file_magic;
-	local tmp_tail;
-
-	read file_magic tmp_tail < <(echo "${MAGIC_SALT}${file}" | md5sum) || return 1
-	grep -qm1 "${file_magic}\|${MAGIC_FORCE_STR}" $TMP_NEW_WORK_DIR/"$file" || return 1
-	echo "$myname: Force push file $file"
-	return 0
-}
-
-
 check_file() {
-	set -e
 	# Проверка codestyle
 	local file="$1"
 	local file_type="$2"
 	local is_new="${3:-}"
-	
-	local need_check=0
 	
 	# Проверять наличие старого файла не катит.
 	# Файл извлекается, даже если его на указанный коммит не существовало.
@@ -137,19 +88,57 @@ check_file() {
 }
 
 
-mkdir $TMP_WORK_DIR $TMP_NEW_WORK_DIR $TMP_OLD_WORK_DIR
+myname=${0##*/}
+
+# API git хуков подразумевает 3 параметра:
+if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
+	echo "Example: (cd <git_dir> && $0 <refname> <old_commit> <new_commit>; )"
+	echo "Today Hash: "
+fi
+ref=$1
+old_commit=$2
+new_commit=$3
+
+# Magic check disabling
+if [ -f /etc/git_secure_salt ]; then
+	MAGIC_SALT=$(</etc/git_secure_salt)  # или сделать конфиг.
+else
+	MAGIC_SALT='salt'
+fi
+read -r MAGIC_FORCE_STR tmp_tail < <(echo "${MAGIC_SALT}$(date +%Y%m%d)" | md5sum)
+
+
+# echo "Hook params $*"
+CHECK_ERR_COUNT=0  # счётчик файлов не прошедших проверку.
+
+TMP_WORK_DIR=/tmp/${myname}.$$  # may be trap on conflict.
+TMP_NEW_WORK_DIR=$TMP_WORK_DIR/new
+TMP_OLD_WORK_DIR=$TMP_WORK_DIR/old
+STORE_SUCCESS_DIR=/home/gitlab/code_style_check_store  # unportable hardcode. TODO: сделать конфиг!
+
+mkdir -p $TMP_WORK_DIR $TMP_NEW_WORK_DIR $TMP_OLD_WORK_DIR
+
+if [ ! -d $STORE_SUCCESS_DIR ]; then
+	mkdir -p $STORE_SUCCESS_DIR
+fi
+
+
+if git log -n 1 $new_commit | grep -qm1 $MAGIC_FORCE_STR; then
+	echo "$myname: Force commit push! Skip check."
+	exit 0
+fi
+
 
 # История изменения файлов между актуальной версией ветки(old) и запушенной(new).
 git log $'--pretty=format:commit\t%H' --name-status --reverse \
 	$old_commit..$new_commit > $TMP_WORK_DIR/git_log
-while IFS=$'\t' read mode file any_tail; do
+while IFS=$'\t' read -r mode file any_tail; do
 	# if [ "$mode" == "commit" ]; then
 	#	commit=$file
 	#	echo "Check commit $commit"
 	# elif
 
-	# D - удалённые
-	# Новые и изменённые файлы.
+	# D - удалённые, A - новые, M - изменённые файлы.
 	if [ "$mode" == "A" ] || [ "$mode" == "M" ]; then
 		# Если файл есть во временной папке, значит мы его уже проверили.
 		if [ -f $TMP_NEW_WORK_DIR/"$file" ]; then
@@ -168,28 +157,25 @@ while IFS=$'\t' read mode file any_tail; do
 		# И это нормальная ситуация. Потому игнорим ошибки checkout
 		# !! Если файл новый, то он же и извлекается по запросу на старый коммит.
 		# Нужно разбираться в поведении checkout
-		git --work-tree=$TMP_NEW_WORK_DIR checkout $new_commit -- "$file" || true
-		git --work-tree=$TMP_OLD_WORK_DIR checkout $old_commit -- "$file" || true
+		git_checkout $new_commit "$file" $TMP_NEW_WORK_DIR
+		git_checkout $old_commit "$file" $TMP_OLD_WORK_DIR
+		# mk func
+		# git --work-tree=$TMP_NEW_WORK_DIR checkout $new_commit -- "$file" || true
+		# git --work-tree=$TMP_OLD_WORK_DIR checkout $old_commit -- "$file" || true
 
 		## Если файла в репе уже нет, то и проверять нечего.
-		## Нужны доп иследование того, как гит извлекает файлы.
-		# извлекается, даже если нет... позже разрулим
-		#[ -f $TMP_NEW_WORK_DIR/"$file" ] || continue
+		if [ ! -f $TMP_NEW_WORK_DIR/"$file" ]; then
+			continue
+		fi
 
 		file_type=$(get_file_type $TMP_NEW_WORK_DIR/"$file")
 		# Если тип не поддерживается нами, то не проверяем.
-		[ -n "$file_type" ] || continue
-
-		# Если файл не проходит проверку и не форсирован, то отказ пушу.
-		# Но не выходим, а проверим оставшиеся файлы,
-		#   чтобы у пользователя был результат всех проверок.
-		echo "$myname: check $file_type file $file new $is_new"
-
-		if ! check_file "$file" "$file_type" "$is_new" \
-		&& ! check_force "$file" "$file_type"; then
-			echo "$myname: --- Push prohibited! ---"
-			ret=1
+		if [ -z "$file_type" ]; then
+			continue
 		fi
+
+		echo "$myname: check $file_type file $file new $is_new"
+		check_file "$file" "$file_type" "$is_new"
 	fi  # if new_file
 done < $TMP_WORK_DIR/git_log
 
@@ -207,5 +193,13 @@ done < $TMP_WORK_DIR/git_log
 
 rm -r $TMP_WORK_DIR
 
+if [ $CHECK_ERR_COUNT != 0 ]; then
+	echo "RTFM http://opencarbon.ru/"\
+	"%D1%81%D0%BE%D0%B3%D0%BB%D0%B0%D1%88%D0%B5%D0%BD%D0%B8%D1%8F"\
+	"_%D0%BA%D0%BE%D0%B4%D0%B0:strongbash#"
+	echo "or GOTO admin."
+	echo "$0 $@ [$$] CHECK FAILED, $CHECK_ERR_COUNT files with errors." >&2
+fi
+
 echo "$0 $@ [$$] SUCCESS" >&2
-exit $ret
+exit 0
