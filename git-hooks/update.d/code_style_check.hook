@@ -35,8 +35,8 @@ get_file_type() {
 		echo bash
 		;;
 	# text/x-python*)
-	#	echo python
-	#	;;
+	# 	echo python
+	# 	;;
 esac
 return 0
 }
