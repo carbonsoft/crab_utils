@@ -1,6 +1,6 @@
 os: linux
   
-install: ls -la && git clone https://github.com/strizhechenko/crab_utils /opt/crab_utils/ && /opt/crab/utils/crab_update
+install: cp -a . /opt/crab/ && /opt/crab/bin/crab_update
 
 script:
   - crab_indent --help
