@@ -1,6 +1,6 @@
 os: linux
   
-install: mkdir -p /opt/crab && cp -a . /opt/crab/crab_utils && /opt/crab/crab_utils/bin/crab_update
+install: mkdir -p /opt/crab && cp -a . /opt/crab/crab_utils && sudo /opt/crab/crab_utils/bin/crab_update
 
 script:
   - crab_indent --help
