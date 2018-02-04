@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -eu
-. /opt/crab/bin/::carbon.sys
+. /opt/crab/crab_utils/bin/::carbon.sys
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
 ### --help Локальные изменения сохранятся во бекап каталоге /opt/crab.$$
