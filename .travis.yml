@@ -11,3 +11,4 @@ script:
   - crab_indent --help
   - crab_syntax --help
   - crab_example --help
+  - /opt/crab/crab_utils/autotest
