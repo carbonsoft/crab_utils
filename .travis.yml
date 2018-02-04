@@ -1,0 +1,8 @@
+os: linux
+  
+install: cp -a . /opt/crab_utils/ && /opt/crab/utils/crab_update
+
+script:
+  - crab_indent --help
+  - crab_syntax --help
+  - crab_example --help
