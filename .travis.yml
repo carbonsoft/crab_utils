@@ -3,7 +3,7 @@ language: python
 os: linux
 
 python:
-  - 3.6
+  - "3.6"
 
 install: mkdir -p /opt/crab && cp -a . /opt/crab/crab_utils && sudo /opt/crab/crab_utils/bin/crab_update
 
