@@ -1,6 +1,6 @@
 # crab_utils
 
-[![Build Status](https://travis-ci.org/strizhechenko/crab_utils.svg?branch=master)](https://travis-ci.org/strizhechenko/crab_utils)
+[![Build Status](https://travis-ci.org/carbonsoft/crab_utils.svg?branch=master)](https://travis-ci.org/carbonsoft/crab_utils)
 
 OpenCarbon7: utils and helpers for developers. bash_indent bash_syntax etc.
 
