@@ -1,13 +1,15 @@
 #!/bin/bash
 
-set -eu
+set -euEo pipefail
+# echo "$0 $@ [$$] START" >&2
 
-[ "${1:---help}" = '--help' ] && { echo 'Example: ssh_cache $ssh_opt git@node1.carbonsoft.ru $sleep_sec'; exit 0; }
+[ "${1:---help}" = '--help' ] && \
+	{ echo 'Example: ssh_cache $ssh_opt git@node1.carbonsoft.ru $sleep_sec'; exit 0; }
 argc=$#
 SSH_OPT=''
 for((i=0;i<$argc-2;i++)); do
-    SSH_OPT="$SSH_OPT $1"
-    shift
+	SSH_OPT="$SSH_OPT $1"
+	shift
 done
 DST=$1
 [ -z "$USER" ] && USER="root"
@@ -48,4 +50,6 @@ if ! ps x | grep -v grep | grep ControlMaster=yes | grep "${SSH_OPT//-/[-]}" | g
 	done
 	[ ! -S "$ControlPath" ] && exit 1 || echo $ControlPath
 fi
+
+# echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
