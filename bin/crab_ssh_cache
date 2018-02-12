@@ -25,6 +25,16 @@ fi
 
 [ -z "${HOME:-}" ] && $HOME="/tmp/"
 ControlPath="$HOME/ssh_cache_${DST}_${SSH_PORT}"
+old_pid=''
+old_cmd=''
+[ -f "${ControlPath}.pid" ] && read old_pid < "${ControlPath}.pid"
+
+# ! not work read old_cmd < "/proc/$old_pid/cmdline"
+[ -f "/proc/$old_pid/cmdline" ] && old_cmd="$(< /proc/$old_pid/cmdline)"
+
+if [[ "$old_cmd" == *"ControlMaster=yes$DST"* ]] && [ -S "$ControlPath" ]; then
+	exit 0
+fi
 if ! ps x | grep -v grep | grep ControlMaster=yes | grep "${SSH_OPT//-/[-]}" | grep -qm1 "$DST" \
 	|| [ ! -S "$ControlPath" ] ; then
 	rm -f "$ControlPath"
@@ -48,7 +58,11 @@ if ! ps x | grep -v grep | grep ControlMaster=yes | grep "${SSH_OPT//-/[-]}" | g
 		[ -S "$ControlPath" ] && break
 		sleep 1
 	done
-	[ ! -S "$ControlPath" ] && exit 1 || echo $ControlPath
+	[ ! -S "$ControlPath" ] && exit 1
+	read new_pid t < <( ps x | grep -v grep | grep ControlMaster=yes \
+		| grep "${SSH_OPT//-/[-]}" | grep -m1 "$DST" || true )
+	echo $new_pid > "${ControlPath}.pid"
+	# echo $ControlPath $new_pid
 fi
 
 # echo "$0 $@ [$$] SUCCESS" >&2
