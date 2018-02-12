@@ -27,5 +27,5 @@ One utility to run syntax checks in shell, c and python.
 
 ### crab_example
 
-Provides 5-10 short examples for utilities, e.g. mdadm, sed, bash.
-
+Provides many short examples for utilities, e.g. mdadm, sed, bash, php, git, etc.
+Automatic grep http://opencarbon.ru/example and custom link.
