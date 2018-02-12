@@ -65,5 +65,6 @@ if ! ps x | grep -v grep | grep ControlMaster=yes | grep "${SSH_OPT//-/[-]}" | g
 	# echo $ControlPath $new_pid
 fi
 
+# test commit
 # echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
