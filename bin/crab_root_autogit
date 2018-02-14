@@ -1,0 +1,93 @@
+#!/bin/bash
+
+set -eu
+. /opt/crab/crab_utils/bin/::carbon.sys
+
+
+autogit_install() {
+	if [ -d .git ]; then
+		echo "Репозиторий в / уже существует."
+		exit 1
+	fi
+	if [ -f .gitignore ]; then
+		echo ".gitignore в / уже существует."
+		exit 1
+	fi
+
+	[ -d /etc/.git ] && mv /etc/.git /etc/.git_old
+
+	cat > .gitignore <<EOF
+/*
+!.gitignore
+!/etc/
+EOF
+
+	cat > /etc/crab_root_autogit <<EOF
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root
+HOME=/
+
+#*/10 * * * * root /opt/crab/crab_utils/bin/crab_root_autogit commit sync &>> /var/log/crab_root_autogit.log
+EOF
+
+	git init
+	return 0
+}
+
+
+autogit_remove() {
+	rm -f .gitignore
+	rm -rf --one-file-system .git
+	rm -f /etc/crab_root_autogit
+}
+
+
+autogit_commit() {
+	if [ "$(git status -s | wc -l)" != 0 ]; then
+		git add .
+		git commit -m 'root auto git.'
+	fi
+}
+
+
+autogit_sync() {
+	if git remote | grep -xqm1 origin; then
+		git pull
+		git push
+	fi
+}
+
+sys::usage "$@"
+### --help Утилита добавление всей корневой файловой системы сервера в git репозиторий.
+### --help По-умолчанию исключаются все файлы, кроме etc.
+### --help Если в etc уже есть репозиторий .git, то он переименуется, чтобы небыло подключения сабмодуля.
+### --help Usage:
+### --help crab_root_autogit install
+### --help crab_root_autogit remove  # удаляет автогит, вместе с репозиторием.
+### --help Example: crab_root_autogit
+
+# работаем только с корнем.
+cd /
+
+while (( $# > 0 )); do
+	case "${1:-}" in
+	install)
+		autogit_install
+		;;
+	commit)
+		autogit_commit
+		;;
+	sync)
+		autogit_sync
+		;;
+	remove)
+		autogit_remove
+		;;
+	*)
+		sys::usage
+	esac
+	shift
+done
+
+exit 0
