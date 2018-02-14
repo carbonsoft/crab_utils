@@ -28,7 +28,8 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 MAILTO=root
 HOME=/
 
-#*/10 * * * * root /opt/crab/crab_utils/bin/crab_root_autogit commit sync &>> /var/log/crab_root_autogit.log
+# */10 * * * * root /opt/crab/crab_utils/bin/crab_root_autogit commit sync \
+  &>> /var/log/crab_root_autogit.log
 EOF
 
 	git init
@@ -40,6 +41,7 @@ autogit_remove() {
 	rm -f .gitignore
 	rm -rf --one-file-system .git
 	rm -f /etc/crab_root_autogit
+	return 0
 }
 
 
@@ -48,6 +50,7 @@ autogit_commit() {
 		git add .
 		git commit -m 'root auto git.'
 	fi
+	return 0
 }
 
 
@@ -56,12 +59,14 @@ autogit_sync() {
 		git pull
 		git push
 	fi
+	return 0
 }
 
 sys::usage "$@"
 ### --help Утилита добавление всей корневой файловой системы сервера в git репозиторий.
 ### --help По-умолчанию исключаются все файлы, кроме etc.
-### --help Если в etc уже есть репозиторий .git, то он переименуется, чтобы небыло подключения сабмодуля.
+### --help Если в etc уже есть репозиторий .git, то он переименуется,
+### --help чтобы избежать подключения сабмодуля.
 ### --help Usage:
 ### --help crab_root_autogit install
 ### --help crab_root_autogit remove  # удаляет автогит, вместе с репозиторием.
@@ -86,6 +91,7 @@ while (( $# > 0 )); do
 		;;
 	*)
 		sys::usage
+		;;
 	esac
 	shift
 done
