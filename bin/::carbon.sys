@@ -13,7 +13,7 @@ __BASH_SOURCE=${BASH_SOURCE[1]}
 
 trap '__exit $? CMD=${BASH_COMMAND// /%%%%%} $@' ERR
 __exit(){
-	set +eu
+	set +eux
 	local STATUS=$1
 	local CMD=
 	local ARGV=
@@ -41,7 +41,7 @@ __exit(){
 
 trap '__trapexit $?' EXIT
 __trapexit(){
-	set +eu
+	set +eux
 	if [ $1 = 0 ]; then
 		[ "${__SILENT:-}" = "" ] && echo "SUCCESS ${__BASH_SOURCE} $__ARGV [$$]" >&2
 	else

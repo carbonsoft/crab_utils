@@ -1,0 +1,61 @@
+#!/bin/bash
+
+set -euEo pipefail
+echo "$0 $@ [$$] START" >&2
+
+if [ "${1:---help}" = "--help" ]; then
+	echo "Example: backup: $0 --user=root --password=mypass --host=localhost DB_NAME BACKUP_DIR"
+	echo 'Example: restore: git log; git checkout;'
+	echo 'Example: restore: for f in *.sql.*; do cat $f >>new.sql; done;'
+	echo 'Example: restore: /usr/bin/mysql -uroot -p123  < new.sql'
+	exit 0
+fi
+
+USER="${1/--user=/}"
+PASSWORD="${2/--password=/}"
+DB_HOST="${3/--host=/}"
+DB_NAME="${4}"
+BACKUP_DIR="${5}"
+cd "$BACKUP_DIR"
+
+if [ ! -d .git ]; then
+	git init .
+	echo '*.sql' > .gitignore
+	git add .gitignore
+	git commit -m init
+fi
+
+mysql_dumpsplit(){
+	local table=""
+	for table in "$PREFIX.table."*; do
+		if [ $(stat -c %s "$table") -gt $((10*1024*1024)) ]; then
+			split -a 4 -d -b 10M "$table" "$table.split."
+			rm -f "$table";
+		fi
+	done
+	return 0
+}
+
+PREFIX="${DB_NAME}.sql"
+rm -f "$PREFIX.table."*
+
+mysqldump --user=$USER --host="$DB_HOST" --password="$PASSWORD" \
+	--opt -c --databases "$DB_NAME" \
+	--skip-quick \
+	--add-drop-table --add-drop-database --skip-extended-insert \
+	--create-options --single-transaction \
+	| csplit -n 4  -s -f"$PREFIX.table." - '/-- Table structure for table/' '{*}'
+
+mysql_dumpsplit
+
+git add .
+error=$( git commit -am $(date +%Y-%m-%d_%H-%M) 2>&1 ) \
+	|| echo "$error" | grep -qm1 'nothing to commit' \
+	|| { echo  "$error"; exit 1; }
+git gc
+error=$( git push origin master 2>&1 )\
+	|| echo "$error" | grep -qm1 'does not appear to be a git repositor' \
+	|| { echo  "$error"; exit 1; }
+
+echo "$0 $@ [$$] SUCCESS" >&2
+exit 0
