@@ -60,7 +60,7 @@ autogit_commit() {
 
 autogit_sync() {
 	if git remote | grep -xqm1 origin; then
-		# git pull
+		# git pull  # опасно. Такие вещи лучше с головой на плечах.
 		git push origin master:master
 	fi
 	return 0
@@ -96,9 +96,12 @@ sys::usage "$@"
 ### --help Если в etc уже есть репозиторий .git, то он переименуется,
 ### --help чтобы избежать подключения сабмодуля.
 ### --help Usage:
-### --help crab_root_autogit install
-### --help crab_root_autogit remove  # удаляет автогит, вместе с репозиторием.
-### --help Example: crab_root_autogit
+### --help crab_root_autogit new      # создаёт новый репозиторий на хранилище и локально,\
+### --help 	делает первый коммит и синхронизацию.
+### --help crab_root_autogit commit   # Коммит имеющихся изменений.
+### --help crab_root_autogit sync     # Push в удалённый репозиторий.
+### --help crab_root_autogit remove   # удаляет автогит, вместе с репозиторием.(remote остаётся)
+### --help Example: crab_root_autogit new
 
 
 # работаем только с корнем.
