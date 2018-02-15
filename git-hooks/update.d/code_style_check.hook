@@ -5,6 +5,25 @@ set -euEo pipefail
 echo "$0 $@ [$$] START" >&2
 
 
+restore_filename() {
+	# В некоторых случаях, гит помещает имена файлов в кавычки и использует внутри экранирование.
+	# Например такое встречается, если в именах есть UTF или кавычки.
+	# К счастью существует команда printf, которая делает обратное преобразование.
+	filename="$1"
+
+	if [ "${filename:0:1}" == \" ]; then
+		# Если первый символ имени - кавычка, то это наш случай, нужно деколировать имя.
+		# Уберём обрамляющие кавычки
+		filename="${filename%\"}"
+		filename="${filename#\"}"
+
+		printf "$filename"
+	else
+		echo "$filename"
+	fi
+	return 0
+}
+
 check_file_ext() {
 	# Вернём "skip" для файлов без кода.
 	# Будем пропускать файлы, которые могут быть большие и при этом не являться кодом.
@@ -12,7 +31,7 @@ check_file_ext() {
 	local file="$1"
 	local file_base="${file##*/}"
 	local file_ext="${file_base##*.}"
-	file_ext=${file_ext%\"}
+
 	case "$file_ext" in
 	sql|iso|img|jpeg|gif|tiff|pgf|html|htm|bin|img|mpeg|mp4|gz)
 		echo skip
@@ -152,6 +171,8 @@ else
 fi
 read -r MAGIC_FORCE_STR tmp_tail < <(echo "${MAGIC_SALT}$(date +%Y%m%d)" | md5sum)
 
+
+# echo "Hook params $*"
 # API git хуков подразумевает 3 параметра:
 if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
 	echo "Example: ( cd git_dir && $0 refname old_commit new_commit; )"
@@ -164,8 +185,21 @@ old_commit=$2
 new_commit=$3
 
 
+# Первый пуш для ветки выглядит .../update refs/heads/new \
+#    0000000000000000000000000000000000000000 017dff097448778fb8b3f6da23ee2c7447bd1a69
+# Это приведёт к полной перепроверке всех файлов в репе причём в статусе "новый"...
+# Можно первые пуши не проверять, но это дырень.
+# Есть компромиссный вариант проверять в таких ситуация последние N коммитов.
+# Можно поискать пересечение с уже запушенными ветками и работать от общего коммита...
+# Пока больше ничего не приходит в голову.
+ZCOMMIT=0000000000000000000000000000000000000000
+if [ "$old_commit" == $ZCOMMIT ];
+	FIRST_PUSH=1
+else
+	FIRST_PUSH=
+fi
 
-# echo "Hook params $*"
+
 CHECK_ERR_COUNT=0  # счётчик файлов не прошедших проверку.
 
 TMP_WORK_DIR=/tmp/${myname}.$$  # may be trap on conflict.
@@ -197,6 +231,8 @@ while IFS=$'\t' read -r mode file any_tail; do
 
 	# D - удалённые, A - новые, M - изменённые файлы.
 	if [ "$mode" == "A" ] || [ "$mode" == "M" ]; then
+		# git иногда экранирует имена. Получим чистое имя.
+		file=$(restore_filename "$file")
 		# Если файл есть во временной папке, значит мы его уже проверили.
 		if [ -f $TMP_NEW_WORK_DIR/"$file" ]; then
 			echo "$myname: Done file: $file, skip."
