@@ -18,7 +18,7 @@ check_file_ext() {
 		echo skip
 		;;
 
-	tar|tgz|gz|bzip2|bz2|xz|rpm|deb|so|pyc|zip)
+	tar|tgz|gz|bzip2|bz2|xz|rpm|deb|so|pyc|zip|txt|md)
 		echo skip
 		;;
 	esac
