@@ -1,0 +1,142 @@
+#!/bin/bash
+
+set -eu
+. /opt/crab/crab_utils/bin/::carbon.sys
+
+STORE_SSH_HOST=root@gitlab.carbonsoft.ru
+STORE_PATH=/home/gitlab/root_autogit_repos
+
+
+autogit_install() {
+	if [ -d .git ]; then
+		echo "Репозиторий в / уже существует."
+		exit 1
+	fi
+	if [ -f .gitignore ]; then
+		echo ".gitignore в / уже существует."
+		exit 1
+	fi
+
+	[ -d /etc/.git ] && mv /etc/.git /etc/.git_old
+	# TODO: крон задание автогита /etc/.git сносить.
+
+	cat > .gitignore <<EOF
+/*
+!.gitignore
+!/etc/
+EOF
+
+	cat > /etc/crab_root_autogit <<EOF
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root
+HOME=/
+
+# */10 * * * * root /opt/crab/crab_utils/bin/crab_root_autogit commit sync \
+  &>> /var/log/crab_root_autogit.log
+EOF
+
+	git init
+	return 0
+}
+
+
+autogit_remove() {
+	rm -f .gitignore
+	rm -rf --one-file-system .git
+	rm -f /etc/crab_root_autogit
+	return 0
+}
+
+
+autogit_commit() {
+	if [ "$(git status -s | wc -l)" != 0 ]; then
+		git add .
+		git commit -m 'root auto git.'
+	fi
+	return 0
+}
+
+
+autogit_sync() {
+	if git remote | grep -xqm1 origin; then
+		# git pull  # опасно. Такие вещи лучше с головой на плечах.
+		git push origin master:master
+	fi
+	return 0
+}
+
+
+create_remote() {
+	repo_name="$1"
+
+	if ssh $STORE_SSH_HOST [ -d "$STORE_PATH/$repo_name" ]; then
+		echo "Remote directory for repo with name $repo_name already exist." >&2
+		return 1
+	elif [ $? == 255 ]; then
+		echo "Error SSH connect to host $STORE_SSH_HOST." >&2
+		return 2
+	fi
+	ssh $STORE_SSH_HOST git init --bare "$STORE_PATH/$repo_name"
+	return 0
+}
+
+
+git_set_origin() {
+	repo_name="$1"
+
+	git remote add origin "ssh://$STORE_SSH_HOST/$STORE_PATH/$repo_name"
+	return 0
+}
+
+
+sys::usage "$@"
+### --help Утилита добавление всей корневой файловой системы сервера в git репозиторий.
+### --help По-умолчанию исключаются все файлы, кроме etc.
+### --help Если в etc уже есть репозиторий .git, то он переименуется,
+### --help чтобы избежать подключения сабмодуля.
+### --help Usage:
+### --help crab_root_autogit new      # создаёт новый репозиторий на хранилище и локально,\
+### --help 	делает первый коммит и синхронизацию.
+### --help crab_root_autogit commit   # Коммит имеющихся изменений.
+### --help crab_root_autogit sync     # Push в удалённый репозиторий.
+### --help crab_root_autogit remove   # удаляет автогит, вместе с репозиторием.(remote остаётся)
+### --help Example: crab_root_autogit new
+
+
+# работаем только с корнем.
+cd /
+
+
+repo_name=$(hostname)
+
+
+while (( $# > 0 )); do
+	case "${1:-}" in
+	new)
+		create_remote $repo_name
+		autogit_install
+		git_set_origin $repo_name
+		autogit_commit
+		autogit_sync
+		;;
+	install)
+		autogit_install
+		;;
+	commit)
+		autogit_commit
+		;;
+	sync)
+		autogit_sync
+		;;
+	remove)
+		autogit_remove
+		;;
+	*)
+		sys::usage
+		;;
+	esac
+	shift
+done
+
+exit 0
