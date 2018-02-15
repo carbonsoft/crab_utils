@@ -12,14 +12,17 @@ check_file_ext() {
 	local file="$1"
 	local file_base="${file##*/}"
 	local file_ext="${file_base##*.}"
-
-	case $file_ext in
-	sql|iso|img|jpeg|gif|tiff|pgf|html|htm|bin|img|mpeg|mp4)
+	file_ext=${file_ext%\"}
+	case "$file_ext" in
+	sql|iso|img|jpeg|gif|tiff|pgf|html|htm|bin|img|mpeg|mp4|gz)
 		echo skip
 		;;
 
-	tar|tgz|gz|bzip2|bz2|xz|rpm|deb|so|pyc|zip)
+	tar|tgz|gz|bzip2|bz2|xz|rpm|deb|so|pyc|zip|txt|md|meta|idx|db|mdb|gdb|db2)
 		echo skip
+		;;
+	*)
+		echo "ext=$file_ext"
 		;;
 	esac
 	return 0
@@ -202,10 +205,11 @@ while IFS=$'\t' read -r mode file any_tail; do
 		ext_skip_flag=$(check_file_ext "$file")
 		size_skip_flag=$(check_file_size "$file" "$new_commit")
 		if [ "$ext_skip_flag" = skip ] || [ "$size_skip_flag" = skip ]; then
-			echo "$myname: file: $file - exclude, skip check."
+			# echo "$myname: file: $file - exclude, skip check."
 			continue
 		fi
-		echo "$myname: Extract $file"
+		# echo "$myname: Extract $file $ext_skip_flag : $size_skip_flag"
+
 		git_checkout $new_commit "$file" $TMP_NEW_WORK_DIR
 		git_checkout $old_commit "$file" $TMP_OLD_WORK_DIR
 
