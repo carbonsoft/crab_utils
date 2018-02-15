@@ -9,7 +9,7 @@ restore_filename() {
 	# В некоторых случаях, гит помещает имена файлов в кавычки и использует внутри экранирование.
 	# Например такое встречается, если в именах есть UTF или кавычки.
 	# К счастью существует команда printf, которая делает обратное преобразование.
-	filename="$1"
+	local filename="$1"
 
 	if [ "${filename:0:1}" == \" ]; then
 		# Если первый символ имени - кавычка, то это наш случай, нужно деколировать имя.
@@ -175,15 +175,21 @@ find_latest_old_commit() {
 	# Слишком далеко заходить тоже не будем.
 	# Ограничим глубину поиска, если ничего не найдём,
 	#  вернём последний коммит из выборки истории.
-	last_commit="$1"
+	local last_commit="$1"
+	local commit
+	local branch_list
+	local deep=50
 
-	for commit in $(git log -n 30 --pretty=format:%H "$last_commit"); do
+	for commit in $(git log -n $deep --pretty=format:%H "$last_commit"); do
+		# echo "Check for old $commit" >&2
 		branch_list="$(git branch --contains "$commit")"
+		# echo "Branch list $branch_list" >&2
 		if [ -n "$branch_list" ]; then
 			break
 		fi
 	done
 	echo "$commit"
+	# echo "Select $commit" >&2
 	return 0
 }
 
@@ -222,17 +228,25 @@ new_commit=$3
 
 # Остановился на варианте, что искать "старый" коммит будет функция find_latest_old_commit
 ZCOMMIT=0000000000000000000000000000000000000000
+
+# Удаление ветки. нам тут делать нечего.
+if [ "$new_commit" == $ZCOMMIT ]; then
+	echo "$0 $@ [$$] SUCCESS" >&2
+	exit 0
+fi
+
+# Новая ветка
 if [ "$old_commit" == $ZCOMMIT ]; then
 	old_commit=$(find_latest_old_commit $new_commit)
 fi
 
 if [ -n "$old_commit" ]; then
-	check_range=$old_commit..$new_commit
+	check_range="${old_commit}..${new_commit}"
 else
-	echo "--- Check full history! ---"
+	# echo "--- Check full history! ---"
 	check_range=$new_commit
 fi
-echo "check_range=$new_commit"
+# echo "check_range=$check_range"
 
 
 CHECK_ERR_COUNT=0  # счётчик файлов не прошедших проверку.
@@ -251,6 +265,7 @@ fi
 
 if git log -n 1 $new_commit | grep -qm1 $MAGIC_FORCE_STR; then
 	echo "$myname: Force commit push! Skip check."
+	echo "$0 $@ [$$] SUCCESS" >&2
 	exit 0
 fi
 
