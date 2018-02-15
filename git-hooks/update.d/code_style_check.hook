@@ -217,6 +217,16 @@ ref=$1
 old_commit=$2
 new_commit=$3
 
+CWD="$(pwd)"
+REPO_NAME="${CWD##*/}"
+
+
+# Не проверять репозитории где есть файл-флаг.
+if [ -f code_style_no_check ]; then
+	echo "Repo $REPO_NAME - skip check."
+	echo "$0 $@ [$$] SUCCESS" >&2
+	exit 0
+fi
 
 # Первый пуш для ветки выглядит .../update refs/heads/new \
 #    0000000000000000000000000000000000000000 017dff097448778fb8b3f6da23ee2c7447bd1a69
