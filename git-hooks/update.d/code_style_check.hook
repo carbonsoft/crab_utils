@@ -161,6 +161,33 @@ git_checkout() {
 }
 
 
+find_latest_old_commit() {
+	# Иногда гит не может нам дать "старый"(уже проверенный) коммит.
+	# И нам нужно его найти самостоятельно.
+	# Например, для новых веток.
+	# Готового инструмента для этого нет.
+	#
+	# Лучшее до чего додумался, идти вниз по истории,
+	# и для каждого коммита смотреть содержащие его ветки.
+	# Если есть ветки содержащие его, значит этот коммит уже был на сервере.
+	# Этот способ не гарантирует полной валидности.
+	# Но нам надо где-то остановится.
+	# Слишком далеко заходить тоже не будем.
+	# Ограничим глубину поиска, если ничего не найдём,
+	#  вернём последний коммит из выборки истории.
+	last_commit="$1"
+
+	for commit in $(git log -n 30 --pretty=format:%H "$last_commit"); do
+		branch_list="$(git branch --contains "$commit")"
+		if [ -n "$branch_list" ]; then
+			break
+		fi
+	done
+	echo "$commit"
+	return 0
+}
+
+
 myname=${0##*/}
 
 # Magic check disabling
@@ -192,12 +219,20 @@ new_commit=$3
 # Есть компромиссный вариант проверять в таких ситуация последние N коммитов.
 # Можно поискать пересечение с уже запушенными ветками и работать от общего коммита...
 # Пока больше ничего не приходит в голову.
+
+# Остановился на варианте, что искать "старый" коммит будет функция find_latest_old_commit
 ZCOMMIT=0000000000000000000000000000000000000000
 if [ "$old_commit" == $ZCOMMIT ]; then
-	FIRST_PUSH=1
-else
-	FIRST_PUSH=
+	old_commit=$(find_latest_old_commit $new_commit)
 fi
+
+if [ -n "$old_commit" ]; then
+	check_range=$old_commit..$new_commit
+else
+	echo "--- Check full history! ---"
+	check_range=$new_commit
+fi
+echo "check_range=$new_commit"
 
 
 CHECK_ERR_COUNT=0  # счётчик файлов не прошедших проверку.
@@ -222,7 +257,7 @@ fi
 
 # История изменения файлов между актуальной версией ветки(old) и запушенной(new).
 git log $'--pretty=format:commit\t%H' --name-status --reverse \
-	$old_commit..$new_commit > $TMP_WORK_DIR/git_log
+	$check_range > $TMP_WORK_DIR/git_log
 while IFS=$'\t' read -r mode file any_tail; do
 	# if [ "$mode" == "commit" ]; then
 	# 	commit=$file
