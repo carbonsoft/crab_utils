@@ -26,7 +26,7 @@ autogit_install() {
 !/etc/
 EOF
 
-	cat > /etc/crab_root_autogit <<EOF
+	cat > /etc/cron.d/crab_root_autogit <<EOF
 SHELL=/bin/bash
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 MAILTO=root
@@ -44,7 +44,7 @@ EOF
 autogit_remove() {
 	rm -f .gitignore
 	rm -rf --one-file-system .git
-	rm -f /etc/crab_root_autogit
+	rm -f /etc/cron.d/crab_root_autogit
 	return 0
 }
 
