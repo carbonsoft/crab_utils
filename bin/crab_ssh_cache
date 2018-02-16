@@ -51,7 +51,7 @@ if ! ps x | grep -v grep | grep ControlMaster=yes | grep "${SSH_OPT//-/[-]}" | g
 		-o 'BatchMode=yes' \
 		-o 'ServerAliveInterval=61'\
 		-o 'ControlMaster=yes' ${DST} \
-		sleep $SEC </dev/null &>/dev/null & disown -a
+		sleep $SEC </dev/null &>>"${ControlPath}.log" & disown -a
 	LANG=C sleep 0.3
 	# мы должны обязательно дождаться иначе следующий ssh сломает сокет и кеширования не будет
 	for tt in 1 2 3 4 5; do
