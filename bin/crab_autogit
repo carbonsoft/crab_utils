@@ -1,62 +1,167 @@
 #!/bin/bash
 
-set -eu
-. /opt/crab/crab_utils/bin/::carbon.sys
+set -euEo pipefail
+echo "$0 $@ [$$] START" >&2
 
-sys::usage "$@"
-### --help Автоматически создавать и коммитить все файлы в каталоге
-### --help Example: auto_git.sh /var/www/html
+usage(){
+	echo "Утилита добавляет в .git все файлы, в том числе вложенные в другие git каталоги"
+	echo "и автоматически раз в день коммитит и, если указано, отправляет на сервер"
+	echo "Example: $0 install \$DIR # install for newdir"
+	echo "Example: $0 install \$DIR git@gitlab.example.com:autogit/\$myhostname"
+	echo "Example: $0 install \$DIR root@example.com:/home/autogit/\$myhostname_\$dir"
+	echo "Example: $0 \$DIR # once add, commit, push"
+	echo "if install dir=/ then .gitignore=* and only added -f subdir /etc"
+	echo "you can edit \$DIR/.autogit to add another subdir"
+	exit 0
+}
+[ "${1:---help}" = "--help" ] && usage
 
-log() {
-	echo "$@"
+ARGV="$@"
+__exit(){
+	local ret=$1
+	[ "$ret" = 0 ] && echo "$0 $ARGV [$$] SUCCESS" >&2 \
+		|| echo "$0 $ARGV [$$] FAILED" >&2
+	exit $ret
+}
+
+__git_find_add(){
+	local adddir="$1"
+	local excludes="$2"
+	local force="$3"
+	local findsubdir
+# git add . добавляет вложенные .git как submodule нам так не надо, но это не отключить
+# нам должно бы подойти такой find
+# find "$subdir" ! -type d ! -path '*.git*' $excludes \
+# | xargs -n 100 git add -f --
+# Но git add не может одновременно добавлять xargs -n 100 файлы обычные
+# и входящие в другие submodule, а добавлять под одному xargs -n 1 это очень долго
+# поэтому делаем небольшой воркараунд, чтобы добавлять по отдельныму каталогу
+
+	[ -n "$excludes" ] && excludes="! -path ${excludes// / ! -path }"
+	find "$adddir" -type d '!' -path '*.git*' $excludes \
+		| while read -r findsubdir; do
+			find "$findsubdir" -maxdepth 1 ! -type d '!' -path '*.git*' -print0 \
+			| xargs -0 -n100 git add $force 2>&1 \
+			| grep -v 'Nothing\|Maybe' || true;
+		done
+	return 0
+}
+autogit_sync(){
+	local subdir t excludes msg
+	cd "$ARG_DIR"
+	[ ! -d ".git" -o ! -s ".autogit" -o ! -f ".gitignore" ] && __init_dir
+	__git_config_set
+	# по умолчанию git add добавляет все найденые вложенные .git как submodule
+	# но нам это не надо, поэтому работаем через find ! -path '*.git*'
+	# todo добавить опцию в git
+	grep -xqm1 '*' .gitignore && force='-f' || force=''
+	while read subdir t excludes; do
+		[ "${subdir:0:1}" = "#" -o -z "$subdir" ] && continue
+		if [ ! -d "$subdir" ]; then
+			echo "crab_autogit: Not found $ARG_DIR/$subdir"
+			continue
+		fi
+		__git_find_add "$subdir" "$excludes" "$force"
+		if ! git status | grep 'nothing to commit'; then
+			msg="$0 $ARG_DIR/${subdir} $t $excludes "$'\n'
+			msg="${msg}$( git status -s | head -n 100 || true )"$'\n'"..."
+			git commit -am "${msg//\/\//}"
+		fi
+	done < .autogit
+	git gc
+	if git remote | grep -xqm1 origin; then
+		git push origin master:master
+	fi
 	return 0
 }
 
-
-dir="${1}"
-log "Запускаем скрипт для каталога $dir"
-if [ ! -d "$dir/" ]; then
-	log "Не найден каталог. $dir"
-	exit 255
-fi
-
-cd "$dir/"
-(
-	cd ..
-	[ -d ".git" ] && git pull
-	exit 0
-)
-init_repo() {
-	log "Инициализируем новый репозиторий"
-	git init
-	git add .
-	git commit -m "Initial commit" &>/dev/null
+__git_config_set(){
+	cd "$ARG_DIR"
+	myip="$( ip r g 1 | grep src | sed 's/.*src //' )" || myip='127.0.0.1'
+	git config user.email "root@$myip"
+	git config user.name "crab_autogit"
+	return 0
+}
+__init_dir(){
+	cd "$ARG_DIR"
+	[ ! -d ".git" ] && git init
+	__git_config_set
+	if [ ! -s ".autogit" ]; then
+		echo '# dir ! exclude1 exclude2' > .autogit
+		echo '# Example:' >> .autogit
+		echo '# etc ! etc/tmp1 etc/cache' >> .autogit
+		[ "$ARG_DIR" = "/" ] && echo '/etc/' >> .autogit || echo '.' >> .autogit
+	fi
+	if [ ! -f ".gitignore" ]; then
+		echo -e '*\n!.gitignore\n!.autogit\n#plz edit .autogit' > .gitignore
+	fi
+	git add .autogit .gitignore
+	if ! git status | grep 'nothing to commit'; then
+		git commit -am init
+	fi
 	return 0
 }
 
-add_commit() {
-	git add .
-	git commit -am "autocommit $0 $@" || true
+__ssh_repo_init(){
+	local rdir=${ARG_ORIGIN##*:}
+	rhost="${ARG_ORIGIN%%:*}"
+	[[ "$rhost" != *@* ]] && rhost="root@$rhost"
+	if [ ! -f /root/.ssh/id_rsa ]; then
+		ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa
+	fi
+	if ! ssh -oBatchMode=yes "$rhost" exit 0; then
+		if ! read -p "plz type enter for manual type ssh password(enter):" -t 10; then
+			echo -e "\nHost key verification failed plz"
+			__exit 1
+		fi
+		cat /root/.ssh/id_rsa.pub | ssh "$rhost" "cat >> ~/.ssh/authorized_keys"
+	fi
+	if ! ssh "$rhost" test -f "$rdir/HEAD"; then
+		ssh "$rhost"  git init --bare "$rdir"
+	fi
 	return 0
 }
 
+__cron_init(){
+	# настроим cron на раз в день
+	local cron_name=crab_autogit${ARG_DIR//\//_}
+	cat > /etc/cron.d/$cron_name <<EOF
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root
+HOME=/root
+01 07 * * * * root /opt/crab/crab_utils/bin/crab_autogit "${ARG_DIR}" \
+  &>> /var/log/${cron_name}.log
+EOF
+	/etc/init.d/crond restart
+	return 0
+}
+autogit_install(){
+	cd "$ARG_DIR"
+	[[ "${ARG_ORIGIN:-}" == *:/*  ]] && __ssh_repo_init
+	__init_dir
+	if [ -n "${ARG_ORIGIN}" ] \
+		&& ! git remote | grep -xqm1 origin; then
+		git remote add origin "${ARG_ORIGIN}"
+	fi
+	autogit_sync
+	__cron_init
+	autogit_sync
+	return 0
+}
 
-if [ ! -d ".git" ]; then
-	init_repo
-	exit 0
+if [ $# = 1 ]; then
+	ARG_DIR="$1"
+	autogit_sync
+elif [ "${1:-}" = "install" -a "${2:-}" != "" ]; then
+	ARG_DIR="$2"
+	ARG_ORIGIN="${3:-}"
+	autogit_install
+else
+	echo -e "\nUnknown command: ${1:-}\n"
+	usage
+	exit 1
 fi
 
-if ! git status &>/dev/null; then
-	log "Ошибка git репозитория! `git status`"
-	log "Создаем новый репозиторий!"
-	mv .git .git.`date +%s`
-	init_repo
-	exit 0
-fi
-
-add_commit
-if git remote show origin &>/dev/null; then
-	git pull origin master
-	git push origin master
-fi
+echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
