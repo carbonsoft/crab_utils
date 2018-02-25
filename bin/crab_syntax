@@ -98,11 +98,11 @@ strongbash004(){
 strongbash005(){
 	### todo обрабатывать отдельно каждую функцию
 	count_func=$( grep '()[ ]*{' "$f" | wc -l || true ) # '
-	count_end_return=$( grep 'return' -A 1 "$f" | grep '^}' | wc -l || true )
+	count_end_return=$( grep 'return\|exit' -A 1 "$f" | grep '^}' | wc -l || true )
 	[ $count_func != $count_end_return ] \
 		&& echo_error \
 		'strongbash005 $count_func!=$count_end_return В конце каждой функции должен быть '\
-		'return 0 или return $ret'
+		'return 0 или return $ret или exit'
 	return 0
 }
 
