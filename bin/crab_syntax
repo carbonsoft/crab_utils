@@ -202,7 +202,7 @@ strongbash012(){
 }
 
 strongbash013(){
-	grep -n "^[$__SPACE]*#[^ !#{}]." "$f" \
+	grep -n "^[$__SPACE]*#[^$__SPACE!#{}]." "$f" \
 		&& echo_error 'strongbash013 ставьте пробел после # или используйте #} #{ для ошибок indent'
 	return 0
 }
