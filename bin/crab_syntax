@@ -149,7 +149,7 @@ strongbash008(){
 }
 
 strongbash009(){
-	grep -n 'let[^.]*=.*' "$f" \
+	egrep -n '\blet\b[^.]*=.*' "$f" \
 		&& echo_error \
 		'strongbash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())'
 	return 0
