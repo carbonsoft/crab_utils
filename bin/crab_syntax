@@ -74,7 +74,7 @@ strongbash001(){
 }
 
 strongbash002(){
-	if ! head -n 10 "$f" | grep -q 'set -euEo pipefail' \
+	if ! head -n 10 "$f" | egrep -qm1 '^(# )?set -euEo pipefail' \
 		&& ! grep -qm1 '::carbon.sys' "$f"; then
 		echo_error\
 			'strongbash002 Не установлен set -euEo pipefail '\
