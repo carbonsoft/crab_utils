@@ -61,3 +61,35 @@ sys::usage(){
 	)
 	[ "${1:-}" = "--help" ] && exit 0 || exit 255
 }
+
+### --help Example: sys::arg_parse "$@"
+### --help Example: sys::arg_parse "vm create name1 --ram=4gb --disksize=10gb --force
+### --help Example: return ARGV[0]=vm ARGV[1]=create ARGV[2]=name1 ARGC=3
+### --help Example: ARG_RAM=4gb ARG_DISKSIZE=10gb ARG_FORCE=TRUE
+sys::arg_parse() {
+	ARGV=( "$0" )
+	ARGC=1
+
+	local i=
+	local _i=
+	local _arg_name=
+
+	for i in "$@"; do
+		case $i in
+		--*)
+			_i=${i#--}
+			if [[ "$_i" == *"="* ]]; then
+				_arg_name="${_i%%=*}"
+				eval "ARG_${_arg_name^^}=\"${_i#*=}\""
+			else
+				eval "ARG_${_i^^}='TRUE'"
+			fi
+			;;
+		*)
+			ARGV=( "${ARGV[@]}" "$i" )
+			ARGC=$((ARGC+1))
+			;;
+		esac
+	done
+	return 0
+}
