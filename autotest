@@ -9,13 +9,14 @@ set -eu
 
 err=0
 
+/opt/crab/crab_utils/bin/crab_syntax /opt/crab/crab_utils || err=$((err+1))
+
 for test in /opt/crab/crab_utils/test/test-*; do
 	[ ! -x $test ] && continue
 	echo
 	$test || err=$((err+1))
 done
 
-/opt/crab/crab_utils/bin/crab_syntax /opt/crab/crab_utils || err=$((err+1))
 
 [ $err != 0 ] && exit 1
 
