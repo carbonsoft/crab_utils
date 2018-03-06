@@ -74,12 +74,21 @@ strongbash001(){
 }
 
 strongbash002(){
-	if ! head -n 10 "$f" | grep -q 'set -euEo pipefail' \
-		&& ! grep -qm1 '::carbon.sys' "$f"; then
-		echo_error\
-			'strongbash002 Не установлен set -euEo pipefail '\
-			'как работать с pipefail: a|b|c|d || true '
-	fi
+	patterns=(
+		'^set -euEo pipefail'
+		'::carbon.sys'
+		'^# set -euEo pipefail потому-что'
+		'#.*::carbon.sys'
+	)
+	head -n 10 "$f" > "/tmp/crab_syntax_check_002.$$"
+	for pattern in "${patterns[@]}"; do
+		if grep -qm1 "$pattern" "/tmp/crab_syntax_check_002.$$"; then
+			rm -f "/tmp/crab_syntax_check_002.$$"
+			return 0
+		fi
+	done
+	echo_error 'strongbash002 Не установлен set -euEo pipefail '\
+		'как работать с pipefail: a|b|c|d || true '
 	return 0
 }
 
