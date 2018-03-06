@@ -1,4 +1,5 @@
-### version 30.03.2017
+### version 2018-03-06
+
 set -euEo pipefail
 __ARGV=
 
@@ -33,8 +34,8 @@ __exit(){
 	echo "ERROR_PROG=$__BASH_SOURCE  $__ARGV ERROR_STACK=${BASH_SOURCE[@]:1}"
 	echo "ERROR_SOURCE=${BASH_SOURCE[@]:1:1} $ARGV ERROR_CMD=\"${CMD}\" ERROR_STATUS=$STATUS LINENO=${BASH_LINENO[@]:0:${#BASH_LINENO[@]}-1} FUNC: ${FUNCNAME[@]:1}"
 	echo ""
-	#echo grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
-	#grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 | grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
+	# echo grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
+	# grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 | grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
 	grep -n  . "${BASH_SOURCE[@]:1:1}" -B 5 -A 5 | grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5 --color
 	exit ${STATUS:-0}
 }
@@ -67,12 +68,12 @@ sys::usage(){
 ### --help Example: return ARGV[0]=vm ARGV[1]=create ARGV[2]=name1 ARGC=3
 ### --help Example: ARG_RAM=4gb ARG_DISKSIZE=10gb ARG_FORCE=TRUE
 sys::arg_parse() {
-	ARGV=( "$0" )
-	ARGC=1
+	ARGC=0
+	ARGV[$ARGC]="$0"
 
 	local i=
 	local _i=
-	local _arg_name=
+	local _arg_name= _arg_value=
 
 	for i in "$@"; do
 		case $i in
@@ -80,14 +81,15 @@ sys::arg_parse() {
 			_i=${i#--}
 			if [[ "$_i" == *"="* ]]; then
 				_arg_name="${_i%%=*}"
-				eval "ARG_${_arg_name^^}=\"${_i#*=}\""
+				_arg_value="${_i#*=}"
+				eval "ARG_${_arg_name^^}"='${_arg_value}'
 			else
-				eval "ARG_${_i^^}='TRUE'"
+				eval "ARG_${_i^^}"='TRUE'
 			fi
 			;;
 		*)
-			ARGV=( "${ARGV[@]}" "$i" )
 			ARGC=$((ARGC+1))
+			ARGV[$ARGC]="$i"
 			;;
 		esac
 	done
