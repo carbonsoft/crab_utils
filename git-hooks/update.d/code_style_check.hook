@@ -286,7 +286,9 @@ while IFS=$'\t' read -r mode file any_tail; do
 	# D - удалённые, A - новые, M - изменённые файлы.
 	if [ "$mode" == "A" ] || [ "$mode" == "M" ]; then
 		# осв: скипаем расширеня в первую очередь тк это быстрей всего
-		[ $(check_file_ext "$file") = skip ] && continue
+		ret=$(check_file_ext "$file")
+		[ "$ret" = skip ] && continue
+
 		# git иногда экранирует имена. Получим чистое имя.
 		file=$(restore_filename "$file")
 		# Если файл есть во временной папке, значит мы его уже проверили.
@@ -294,14 +296,8 @@ while IFS=$'\t' read -r mode file any_tail; do
 			echo "$myname: Already check file: $file, skip."
 			continue
 		fi
-		[ $(check_file_size "$file "$new_commit") = skip ] && continue
-		# size_skip_flag=$(check_file_size "$file")
-		# size_skip_flag=$(check_file_size "$file" "$new_commit")
-		# if [ "$ext_skip_flag" = skip ] || [ "$size_skip_flag" = skip ]; then
-		#	echo "$myname: file: $file - exclude, skip check."
-		#	continue
-		# fi
-		# echo "$myname: Extract $file $ext_skip_flag : $size_skip_flag"
+		ret=$(check_file_size "$file" "$new_commit")
+		[ "$ret" = skip ] && continue
 
 		git_checkout $new_commit "$file" $TMP_NEW_WORK_DIR
 		git_checkout $old_commit "$file" $TMP_OLD_WORK_DIR
