@@ -52,7 +52,7 @@ check_file_size() {
 	local ls_info ls_file any_tail ls_mode ls_type ls_sha ls_size ls_info_tail
 	# Получим размер файла от гит.
 	# формат вывода: man git-ls-tree
-# <mode> SP <type> SP <object> SP <object size> TAB <file>
+	# <mode> SP <type> SP <object> SP <object size> TAB <file>
 	# По факту пробелов мржет быть несколько.
 	git ls-tree -l "$commit" -- "$file" > $TMP_WORK_DIR/ls-tree
 	while IFS=$'\t' read -r ls_info ls_file any_tail; do

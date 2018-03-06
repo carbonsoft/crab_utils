@@ -73,6 +73,7 @@ function GetShIndent()
 	let prevprevline = getline(prevprevnum)
 	
 	if curline =~ '^#[^{}].*'
+		\ || curline =~ '^#$'
 		\ || curline =~ "^'.*"
 		\ || curline =~ '^".*'
 		if s:indent_befor_skip =~ -1
@@ -84,7 +85,7 @@ function GetShIndent()
 		let prevind = s:indent_befor_skip
 		let s:indent_befor_skip = -1
 	endif
-	if prevline =~ '.*[<][<]EOF.*' && prevline !~ '^\s*#[ #]'
+	if prevline =~ '.*[<][<]EOF.*' && prevline !~ '^\s*#[ \t#]'
 		let s:indent_eof = prevind
 		return curind
 	endif
@@ -98,7 +99,7 @@ function GetShIndent()
 		return curind
 	endif
 
-	if prevline =~ 'echo "' && prevline !~ 'echo ".*"' && prevline !~ '^\s*#[ #]'
+	if prevline =~ 'echo "' && prevline !~ 'echo ".*"' && prevline !~ '^\s*#[ \t#]'
 		let s:indent_echo1 = prevind
 		return curind
 	endif
@@ -113,7 +114,7 @@ function GetShIndent()
 	endif
 
 
-	if prevline =~ "echo '" && prevline !~ "echo '.*'" && prevline !~ '^\s*#[ #]'
+	if prevline =~ "echo '" && prevline !~ "echo '.*'" && prevline !~ '^\s*#[ \t#]'
 		let s:indent_echo2 = prevind
 		return curind
 	endif
@@ -137,7 +138,7 @@ function GetShIndent()
 				\ || prevline =~ '^\s*#{$'
 				\ || prevline =~ '^\s*[^() \t]\{1,\})'
 				\ || prevline =~ '^\s*[ |]*($'
-		if prevline !~ '\(esac\|fi\|done\)\>\s*$' && prevline !~ '}\s*$' && prevline !~ '^\s*)' && prevline !~ '^\s*#[ #]'
+		if prevline !~ '\(esac\|fi\|done\)\>\s*$' && prevline !~ '}\s*$' && prevline !~ '^\s*)' && prevline !~ '^\s*#[ \t#]'
 			let prevind = prevind + &sw
 			return prevind
 		endif
@@ -161,13 +162,13 @@ function GetShIndent()
 				\ || curline =~ '^\s*#}'
 				\ || curline =~ '^\s*)'
 				\ )
-				\ && curline !~ '^\s*fi[ln]\>' && curline !~ '^\s*#[ #]'
+				\ && curline !~ '^\s*fi[ln]\>' && curline !~ '^\s*#[ \t#]'
 		let prevind = prevind - &sw
 	endif
 
 	if prevline =~ '.*\\$' && s:indent_slash == -1
-			\ && prevline !~ '^\s*#[ #]'
-			\ && (prevprevline !~ '.*\\$' || prevprevline =~ '^\s*#[ #]' )
+			\ && prevline !~ '^\s*#[ \t#]'
+			\ && (prevprevline !~ '.*\\$' || prevprevline =~ '^\s*#[ \t#]' )
 		let prevind = prevind + &sw
 		let s:indent_slash = prevind
 		return prevind
