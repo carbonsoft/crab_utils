@@ -294,7 +294,7 @@ while IFS=$'\t' read -r mode file any_tail; do
 			echo "$myname: Already check file: $file, skip."
 			continue
 		fi
-		[ $(check_file_size "$file") = skip ] && continue
+		[ $(check_file_size "$file "$new_commit") = skip ] && continue
 		# size_skip_flag=$(check_file_size "$file")
 		# size_skip_flag=$(check_file_size "$file" "$new_commit")
 		# if [ "$ext_skip_flag" = skip ] || [ "$size_skip_flag" = skip ]; then
