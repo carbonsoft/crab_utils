@@ -241,6 +241,16 @@ echo 2
 echo yes
 echo yes
 
+### strongbash029 Если мы берем stdout от функции мы обязаны прописать
+### в первой строке set -e тк он снимается
+FAIL029(){
+	set -e
+	echo TRUE
+	return 0
+}
+ret=$( FAIL029 )
+
+
 ### strongbash006  В конце каждого файла должен быть echo SUCCES
 echo S#U#C#C#E#S#S
 
