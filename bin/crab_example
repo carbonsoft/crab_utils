@@ -14,7 +14,7 @@ sys::usage "$@"
 
 
 
-if [ "${1}" == update ]; then
+if [ "${1}" == "update" ]; then
 
 	echo 0 > /tmp/.carbon_example/lastupdate
 fi
@@ -41,7 +41,7 @@ update(){
 mkdir -p /tmp/.carbon_example
 touch /tmp/.carbon_example/lastupdate
 
-if [ "${1}" == update ]; then
+if [ "${1}" == "update" ]; then
 	update
 fi
 

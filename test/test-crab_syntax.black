@@ -445,6 +445,17 @@ FAIL029(){
 }
 ret=$( FAIL029 )
 
+### strongbash030 нельзя вызывать функцию внутри if fname и fname&& и fname||
+FAIL030(){
+	echo TRUE
+	return 0
+}
+FAIL030 && echo TRUE
+FAIL030 || echo TRUE
+if FAIL030; then
+	echo TRUE
+fi
+
 ### strongbash007  В конце каждого файла должен быть exit 0
 e#x#i#t 0
 

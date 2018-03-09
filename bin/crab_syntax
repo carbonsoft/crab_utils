@@ -301,13 +301,42 @@ check_funcs=$( cat "$f" \
 strongbash029(){
 	for fname in $check_funcs; do
 		if egrep -qm1 ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$f" \
-			&& ! egrep -A 1 "$fname\(\).*\{" "$f" | grep -qm1 'set -e'; then
+			&& ! egrep -A 1 "^$fname\(\).*\{" "$f" | grep -qm1 'set -e'; then
+			egrep -n ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$f"
 			echo_error "strongbash029 добавьте set -e в первую строку функции $fname ,"\
 				"которая используется в конструкции \$( $fname )"
 		fi
 	done
 	return 0
 }
+
+strongbash030_1(){
+	for fname in $check_funcs; do
+		if egrep -n "(^|.*\W)$fname[ ]*&&.*" "$f" ; then
+			echo_error "strongbash030_1 нельзя использовать $fname && cmd1"
+		fi
+	done
+	return 0
+}
+
+strongbash030_2(){
+	for fname in $check_funcs; do
+		if egrep -n "(^|.*\W)$fname[ ]*\|\|.*" "$f" ; then
+			echo_error "strongbash030_2 нельзя использовать $fname || cmd1"
+		fi
+	done
+	return 0
+}
+
+strongbash030_3(){
+	for fname in $check_funcs; do
+		if egrep -n ".*if.*\s$fname\W+.*" "$f" ; then
+			echo_error "strongbash030_3 нельзя использовать if $fname; then"
+		fi
+	done
+	return 0
+}
+
 ###
 
 if [ $maybe == 1 ]; then
