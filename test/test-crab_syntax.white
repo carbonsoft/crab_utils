@@ -270,6 +270,14 @@ ret=$( FAIL029 )
 rm -rf -one-file-system "$dir"
 rm -rf -one-file-system "/tmp/mydir786878/*"
 
+### strongbash023  1. Нужно всегда использовать read -r f1 f2
+### strongbash023  2. А для чтения целой строки while IFS='' read -r line; do
+read -r f1 f2 < /tmp/myfile
+
+while IFS='' read -r line; do
+	echo "$f"
+done < /tmp/myfile
+
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 ### strongbash007  В конце каждого файла должен быть exit 0
 

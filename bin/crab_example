@@ -57,7 +57,7 @@ search(){
 	for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
 		showline=FALSE
 		buff=""
-		while read -r line; do
+		while IFS='' read -r line; do
 			shopt -s nocasematch
 			if [[ "$line" == *"${words1}"* ]]; then
 				if [ "${words2}" = "" ] || [[ "$line" == *"${words2}"* ]]; then

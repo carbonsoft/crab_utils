@@ -495,6 +495,14 @@ rm -rf -one-file-system "$dir/*"
 ### strongbash024_4
 rm -rf "$dir"
 
+### strongbash023  1. Нужно всегда использовать read -r f1 f2 
+### strongbash023  2. А для чтения целой строки while IFS='' read -r line; do
+read f1 f2 < /tmp/myfile
+
+while read line; do
+	 echo "$f"
+done < /tmp/myfile
+
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 echo S#U#C#C#E#S#S
 

@@ -28,7 +28,7 @@ syntax_style=${2:-bash}
 if [ -d "$1" ]; then
 	DIR="$1"
 	failed=FALSE
-	while read f; do
+	while read -r f; do
 		head -n1 "$f" | grep -qm1 '#!/bin/bash' || continue
 		/opt/crab/crab_utils/bin/crab_syntax "$f" || failed=TRUE
 	done< <( find "$DIR"/* -type f )
@@ -200,7 +200,7 @@ strongbash012(){
 		&& echo_error 'strongbash012 pipe в "| \" требуется вынести на следующую строку.
 	Пример:
 	cat 123 | grep 123 \
-		| while read t; do echo 123; done
+		| while read -r t; do echo 123; done
 	'
 	return 0
 }
@@ -299,9 +299,24 @@ strongbash019(){
 	return 0
 }
 
+strongbash023_1(){
+	if grep -P -n '^([^#].*\s|)read(?!.*-r).*' "$F"; then
+		echo_error "strongbash023_1"\
+			'нужно всегда использовать read -r f1 f2'
+	fi
+	return 0
+}
+
+strongbash023_2(){
+	if grep -P -n '^([^#].*\s|)while [r]ead.*line' "$F"; then
+		echo_error "strongbash023_2"\
+			'для чтения целой строки while IFS='' read -r line; do'
+	fi
+	return 0
+}
 
 strongbash024_1(){
-	if  grep -P -n '^(?![#]).*rm -r[f]*\s.*"[.]*\/\$' ""$F; then
+	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"[.]*\/\$' "$F"; then
 		echo_error "strongbash024_1"\
 			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"'
 	fi
@@ -309,14 +324,14 @@ strongbash024_1(){
 }
 
 strongbash024_2(){
-	if  grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*\w[*]' "$F"; then
+	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*\w[*]' "$F"; then
 		echo_error "strongbash024_2"\
 			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"'
 	fi
 	return 0
 }
 strongbash024_3(){
-	if  grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*\/' "$F"; then
+	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*\/' "$F"; then
 		echo_error "strongbash024_3"\
 			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"'
 	fi
