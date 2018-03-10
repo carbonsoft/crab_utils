@@ -278,6 +278,15 @@ while IFS='' read -r line; do
 	echo "$f"
 done < /tmp/myfile
 
+### strongbash022_1 Утилиты должны удалять за собой временные файлы
+tmpf="/tmp/rrr.$$"
+rm -f "$tmpf"
+
+### strongbash022_2 Утилиты должны удалять за собой временные файлы
+tmpf1=$(mktemp /tmp/rrr.XXXX )
+rm -f "$tmpf1"
+
+
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 ### strongbash007  В конце каждого файла должен быть exit 0
 

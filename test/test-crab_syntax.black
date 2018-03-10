@@ -40,9 +40,8 @@ let y=y+1
 
 ### strongbash010 Не рекомендуется использовать переменные для временных файлов,
 ### лучше /tmp/binname_tmpcat.$$
-$tmp1=/tmp/test-crab_syntax_check.black.$$
+tmp1=/tmp/test-crab_syntax_check.black.$$
 rm -f $tmp1
-
 ### strongbash011 Нельзя использовать временные файлы без $$, лучше rm -f /tmp/binname_tmpcat.$$
 rm -f /tmp/test-crab_syntax_check.black.00
 
@@ -502,6 +501,14 @@ read f1 f2 < /tmp/myfile
 while read line; do
 	 echo "$f"
 done < /tmp/myfile
+
+### strongbash022_1 Утилиты должны удалять за собой временные файлы
+tmpf="/tmp/rrr.$$"
+#rm -f "$tmpf"
+
+### strongbash022_2 Утилиты должны удалять за собой временные файлы
+tmpf1=$(mktemp /tmp/rrr.XXXX )
+#rm -f "$tmpf1"
 
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 echo S#U#C#C#E#S#S

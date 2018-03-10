@@ -160,9 +160,11 @@ strongbash009(){
 }
 
 strongbash010(){
-	cat "$F" | grep -v strongbash010 | grep -v 'DIR\|dir' | grep -n '^[^#].*=/tmp/' \
-		&& echo 'WARNING ^^^ strongbash010 Не рекомендуется использовать переменные '\
-		'для временных файлов, лучше /tmp/binname_tmpcat.$$'
+	cat "$F" | grep -v strongbash010 | grep -v 'DIR\|dir' | grep -P -n '^[^#\s]*=/tmp/' \
+		&& echo 'WARNING ^^^ strongbash010 Не рекомендуется использовать' \
+		'глобальные переменные для временных файлов,' \
+		'лучше локальные local tt=/tmp/binname_tmpcat.$$' \
+		'или глобальный каталог mkdir -p $TMPDIR $TMPDIR/testfile.txt'
 	if egrep -q '^[^#]*rm.*/tmp/.*' "$F" && \
 		! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep -qm1 '$$'; then
 		egrep -n 'rm.*/tmp/.*' "$F"
@@ -296,6 +298,31 @@ strongbash019(){
 			"Example: $F [argv] и или sys::usage "$@" и ###"\
 			" --help"
 	fi
+	return 0
+}
+
+strongbash022_1(){
+	list_tmpvar1=$( grep -P '^\s*\w*="{0,1}/tmp/.*"{0,1}' "$F" \
+		| sed -n 's/\(.*\W\|^\)\(\w*\)=.*/\2/p' || true )
+	for var in $list_tmpvar1; do
+		if ! grep -qm1 -P "^([^#].*|)rm.*$var" "$F"; then
+			echo_error "strongbash022_1" \
+				"утилиты должны удалять за собой временные файлы rm -f \"\$$var\""\
+				"или работать c постоянными файлами в /var/"
+		fi
+	done
+	return 0
+}
+strongbash022_2(){
+	list_tmpvar2=$( grep -P '^\s*\w*=.*[(`]\s*mktemp.*' "$F" \
+		| sed -n 's/\(.*\W\|^\)\(\w*\)=.*/\2/p' || true )
+	for var in $list_tmpvar2; do
+		if ! grep -qm1 -P "^([^#].*|)rm.*$var" "$F"; then
+			echo_error "strongbash022_2" \
+				"утилиты должны удалять за собой временные файлы rm -f \"\$$var\""\
+				"или работать c постоянными файлами в /var/"
+		fi
+	done
 	return 0
 }
 
