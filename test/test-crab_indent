@@ -16,7 +16,7 @@ diff -U 10 /opt/crab/crab_utils/test/test-crab_indent.white \
 rm -f /tmp/test-crab_indent.white.$$
 
 if [ $failed = TRUE ]; then
-	echo TEST $0 /opt/crab/crab_utils/test/test-crab_indent.white [ FAILED ]
+	echo "TEST $0 /opt/crab/crab_utils/test/test-crab_indent.white [ FAILED ]"
 	exit 1
 fi
 

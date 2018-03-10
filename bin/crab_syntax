@@ -299,6 +299,19 @@ strongbash019(){
 	return 0
 }
 
+strongbash025(){
+	if egrep -n '^\s*(do|then)(\s+.*|$)' "$F"; then
+		echo_error "strongbash025 'do' и 'then' НЕ делаем c новой строки"
+	fi
+	return 0
+}
+
+strongbash026(){
+	if egrep -n '^[^#].* \]+$' "$F"; then
+		echo_error "strongbash026 нельзя использовать голые скобки для assert и тп [ a = b ]"
+	fi
+	return 0
+}
 
 strongbash029(){
 	for fname in $ALL_FUNCS; do

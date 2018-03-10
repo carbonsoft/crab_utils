@@ -433,8 +433,6 @@ echo test> /tmp/r.$$
 echo yes	
 echo yes 
 
-### strongbash006  В конце каждого файла должен быть echo SUCCES
-echo S#U#C#C#E#S#S
 
 
 ### strongbash029 Если мы берем stdout от функции мы обязаны прописать
@@ -456,12 +454,32 @@ if FAIL030; then
 	echo TRUE
 fi
 
+### strongbash025 «do» и «then» НЕ делаем c новой строки
+if true;
+then
+	echo true
+fi
+
+for 1 in 1;
+do
+	echo true
+done
+
+if true;
+	then echo 1
+	echo true
+fi
+
+for 1 in 1;
+	do echo 1
+	echo true
+done
+
 ### strongbash026 Нельзя использовать голые скобки для assert и тп [ a = b ]
-FAIL026(){
-	[ 1 = 2 ]
-	return 0
-}
-ret=$( FAIL026 )
+[ 1 = 2 ]
+
+### strongbash006  В конце каждого файла должен быть echo SUCCES-S
+echo S#U#C#C#E#S#S
 
 ### strongbash007  В конце каждого файла должен быть exit 0
 e#x#i#t 0

@@ -241,6 +241,20 @@ echo 2
 echo yes
 echo yes
 
+### strongbash025 «do» и «then» НЕ делаем c новой строки
+if true; then
+	echo true
+fi
+
+for 1 in 1; do
+	echo true
+done
+
+### strongbash026 Нельзя использовать голые скобки для assert и тп [ a = b ]
+[ 1 = 2 ] && { echo error1; exit 1; }
+
+
+
 ### strongbash029 Если мы берем stdout от функции мы обязаны прописать
 ### в первой строке set -e тк он снимается
 FAIL029(){
@@ -251,9 +265,8 @@ FAIL029(){
 ret=$( FAIL029 )
 
 
-### strongbash006  В конце каждого файла должен быть echo SUCCES
-echo S#U#C#C#E#S#S
-
+### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 ### strongbash007  В конце каждого файла должен быть exit 0
+
 echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
