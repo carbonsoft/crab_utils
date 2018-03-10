@@ -265,6 +265,11 @@ FAIL029(){
 ret=$( FAIL029 )
 
 
+### strongbash024 1. Запрещено rm -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
+### strongbash024 2. rm -rf  всегда с -one-file-system
+rm -rf -one-file-system "$dir"
+rm -rf -one-file-system "/tmp/mydir786878/*"
+
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 ### strongbash007  В конце каждого файла должен быть exit 0
 

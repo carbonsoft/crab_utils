@@ -299,6 +299,38 @@ strongbash019(){
 	return 0
 }
 
+
+strongbash024_1(){
+	if  grep -P -n '^(?![#]).*rm -r[f]*\s.*"[.]*\/\$' ""$F; then
+		echo_error "strongbash024_1"\
+			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"'
+	fi
+	return 0
+}
+
+strongbash024_2(){
+	if  grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*\w[*]' "$F"; then
+		echo_error "strongbash024_2"\
+			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"'
+	fi
+	return 0
+}
+strongbash024_3(){
+	if  grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*\/' "$F"; then
+		echo_error "strongbash024_3"\
+			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"'
+	fi
+	return 0
+}
+
+strongbash024_4(){
+	if grep -n -P '^(?![#])rm(?!.*-one-file-system.*).*-r.*' "$F"; then
+		echo_error "strongbash024_4"\
+			'Запрещено r''m -rf без -one-file-system '
+	fi
+	return 0
+}
+
 strongbash025(){
 	if egrep -n '^\s*(do|then)(\s+.*|$)' "$F"; then
 		echo_error "strongbash025 'do' и 'then' НЕ делаем c новой строки"

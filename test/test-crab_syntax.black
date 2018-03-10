@@ -478,6 +478,23 @@ done
 ### strongbash026 Нельзя использовать голые скобки для assert и тп [ a = b ]
 [ 1 = 2 ]
 
+### strongbash024 1. Запрещено rm -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
+### strongbash024 2. rm -rf  всегда с -one-file-system
+dir="/tmp/1231231313123123123123123"
+### strongbash024_1
+rm -rf -one-file-system "/$dir"
+rm -rf -one-file-system "./$dir"
+
+### strongbash024_2
+rm -rf -one-file-system "$dir*"
+
+### strongbash024_3
+rm -rf -one-file-system "$dir/"
+rm -rf -one-file-system "$dir/*"
+
+### strongbash024_4
+rm -rf "$dir"
+
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 echo S#U#C#C#E#S#S
 
