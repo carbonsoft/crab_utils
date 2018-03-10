@@ -510,6 +510,31 @@ tmpf="/tmp/rrr.$$"
 tmpf1=$(mktemp /tmp/rrr.XXXX )
 #rm -f "$tmpf1"
 
+
+### strongbash021_1 Запрещено удалять tmp в trap EXIT.
+trap 'rm -f /tmp/eee' EXIT
+trap 'rm -f /tmp/eee' 1 2 0 4
+
+### strongbash021_2 Запрещено удалять tmp в trap EXIT.
+tf=/tmp/rrr1
+trap "rm -f $tf" EXIT
+
+### strongbash021_3 Запрещено удалять tmp в trap EXIT.
+trap "__exit1" EXIT
+__exit1(){
+	rm -f /tmp/eee
+}
+
+### strongbash021_4 Запрещено удалять tmp в trap EXIT.
+trap "__exit2" EXIT
+__exit2(){
+	rm -f "$tf"
+}
+
+### strongbash021_5 Не рекомендуется использовать trap EXIT.
+trap _exit EXIT
+
+
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 echo S#U#C#C#E#S#S
 

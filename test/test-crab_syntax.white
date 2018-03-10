@@ -149,93 +149,69 @@ FAIL014(){
 }
 
 ### strongbash015 Слишком большой линейный файл больше 64 строк, разбейте на функции
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
 
 ### strongbash016 Уберите конечные пробелы и tab
 echo yes
@@ -286,6 +262,13 @@ rm -f "$tmpf"
 tmpf1=$(mktemp /tmp/rrr.XXXX )
 rm -f "$tmpf1"
 
+### strongbash021 Запрещено удалять tmp в trap EXI T, но lock можно
+tf=/var/lock/tt
+trap "__exit2" INT
+__exit2(){
+	rm -f "$tf"
+	return 0
+}
 
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 ### strongbash007  В конце каждого файла должен быть exit 0

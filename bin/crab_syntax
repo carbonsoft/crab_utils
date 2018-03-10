@@ -301,9 +301,60 @@ strongbash019(){
 	return 0
 }
 
+list_tmpvar1=$( grep -P '^\s*\w*="{0,1}/tmp/.*"{0,1}' "$F" \
+	| sed -n 's/\(.*\W\|^\)\(\w*\)=.*/\2/p' || true )
+
+list_tmpvar2=$( grep -P '^\s*\w*=.*[(`]\s*mktemp.*' "$F" \
+	| sed -n 's/\(.*\W\|^\)\(\w*\)=.*/\2/p' || true )
+
+grep_list_tmpvar="$list_tmpvar1 $list_tmpvar2"
+grep_list_tmpvar="${grep_list_tmpvar//[ $'\n']/|}"
+
+strongbash021_1(){
+	if grep -n -P 'trap.*rm.*tmp.*(EXIT|0).*' "$F"; then
+		echo_error "strongbash021_1 запрещено удалять tmp в trap EXIT"
+	fi
+	return 0
+}
+strongbash021_2(){
+	if grep -n -P "trap.*rm.*($grep_list_tmpvar).*(EXIT|0).*" "$F"; then
+		echo_error "strongbash021_2 запрещено удалять tmp в trap EXIT"
+	fi
+	return 0
+}
+
+strongbash021_3(){
+	for func in $ALL_FUNCS; do
+		if grep -q "trap.*$func.*" "$F"; then
+			if grep -A 1000000 "$func" "$F" | grep -B100000 -m1 '^}' \
+				| grep -n '.*rm.*tmp'; then
+				echo_error "strongbash021_3 запрещено удалять tmp в trap EXIT"
+			fi
+		fi
+	done
+	return 0
+}
+
+strongbash021_4(){
+	for func in $ALL_FUNCS; do
+		if grep -q "trap.*$func.*" "$F"; then
+			if grep -A 1000000 "$func" "$F" | grep -B100000 -m1 '^}' \
+				| grep -P -n ".*rm.*($grep_list_tmpvar).*"; then
+				echo_error "strongbash021_4 запрещено удалять tmp в trap EXIT"
+			fi
+		fi
+	done
+	return 0
+}
+
+strongbash021_5(){
+	if grep -n -P 'trap.*(EXIT|0).*' "$F"; then
+		echo "WARNING ^^^ strongbash021_5 не рекомендуется использовать trap EXIT"
+	fi
+	return 0
+}
+
 strongbash022_1(){
-	list_tmpvar1=$( grep -P '^\s*\w*="{0,1}/tmp/.*"{0,1}' "$F" \
-		| sed -n 's/\(.*\W\|^\)\(\w*\)=.*/\2/p' || true )
 	for var in $list_tmpvar1; do
 		if ! grep -qm1 -P "^([^#].*|)rm.*$var" "$F"; then
 			echo_error "strongbash022_1" \
@@ -314,8 +365,6 @@ strongbash022_1(){
 	return 0
 }
 strongbash022_2(){
-	list_tmpvar2=$( grep -P '^\s*\w*=.*[(`]\s*mktemp.*' "$F" \
-		| sed -n 's/\(.*\W\|^\)\(\w*\)=.*/\2/p' || true )
 	for var in $list_tmpvar2; do
 		if ! grep -qm1 -P "^([^#].*|)rm.*$var" "$F"; then
 			echo_error "strongbash022_2" \
