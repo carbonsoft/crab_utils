@@ -456,6 +456,13 @@ if FAIL030; then
 	echo TRUE
 fi
 
+### strongbash026 Нельзя использовать голые скобки для assert и тп [ a = b ]
+FAIL026(){
+	[ 1 = 2 ]
+	return 0
+}
+ret=$( FAIL026 )
+
 ### strongbash007  В конце каждого файла должен быть exit 0
 e#x#i#t 0
 

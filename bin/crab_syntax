@@ -42,15 +42,19 @@ if [ "$syntax_style" != "bash" ]; then
 fi
 
 __SPACE=$' \t'
-f=$1
+F=$1
 
-if grep '^[#$__SPACE]* skip crab_syntax' "$f"; then
+if grep '^[#$__SPACE]* skip crab_syntax' "$F"; then
 	echo SKIP
 	exit 0
 fi
 
 ERROR=0
 error_msg=""
+
+ALL_FUNCS=$( cat "$F" \
+	| grep '^.*()' \
+	| sed -n  's/^\(\S*\)().*{/\1/p' ) || true # '
 
 echo_error(){
 	ERROR=$((ERROR+1))
@@ -61,10 +65,10 @@ echo_error(){
 
 strongbash001(){
 	### crab_indent
-	cp -f "$f" /tmp/crab_syntax_check.$$
+	cp -f "$F" /tmp/crab_syntax_check.$$
 	chmod 666 /tmp/crab_syntax_check.$$
 	crab_indent /tmp/crab_syntax_check.$$ "$syntax_style" &>/tmp/crab_indent_out.$$
-	if ! cmp /tmp/crab_syntax_check.$$ "$f"; then
+	if ! cmp /tmp/crab_syntax_check.$$ "$F"; then
 		cat /tmp/crab_indent_out.$$
 		echo_error 'strongbash001 Не выполнен crab_indent'
 	fi
@@ -74,8 +78,8 @@ strongbash001(){
 }
 
 strongbash002(){
-	if ! head -n 10 "$f" | egrep -qm1 '^(# )?set -euEo pipefail' \
-		&& ! grep -qm1 '::carbon.sys' "$f"; then
+	if ! head -n 10 "$F" | egrep -qm1 '^(# )?set -euEo pipefail' \
+		&& ! grep -qm1 '::carbon.sys' "$F"; then
 		echo_error\
 			'strongbash002 Не установлен set -euEo pipefail '\
 			'как работать с pipefail: a|b|c|d || true '
@@ -84,21 +88,21 @@ strongbash002(){
 }
 
 strongbash003(){
-	egrep -n '^[^#].*(if|&&|\|\|).* \|\| true' "$f" &&\
+	egrep -n '^[^#].*(if|&&|\|\|).* \|\| true' "$F" &&\
 		echo_error 'strongbash003 Нельзя использовать || true в условных выражениях'
 	return 0
 }
 
 strongbash004(){
-	grep -n 'else' -A 1 "$f" | egrep "^[0-9$__SPACE-]*true" \
+	grep -n 'else' -A 1 "$F" | egrep "^[0-9$__SPACE-]*true" \
 		&& echo_error 'strongbash004 Нельзя использовать else true в условных выражениях'
 	return 0
 }
 
 strongbash005(){
 	### todo обрабатывать отдельно каждую функцию
-	count_func=$( grep '()[ ]*{' "$f" | wc -l || true ) # '
-	count_end_return=$( grep 'return\|exit' -A 1 "$f" | grep '^}' | wc -l || true )
+	count_func=$( grep '()[ ]*{' "$F" | wc -l || true ) # '
+	count_end_return=$( grep 'return\|exit' -A 1 "$F" | grep '^}' | wc -l || true )
 	[ $count_func != $count_end_return ] \
 		&& echo_error \
 		'strongbash005 $count_func!=$count_end_return В конце каждой функции должен быть '\
@@ -107,9 +111,9 @@ strongbash005(){
 }
 
 strongbash006(){
-	if ! tail -n 2 "$f" | head -n 1 | grep -q '$0 $@ \[$$\] SUCCESS'\
-		|| ! grep -q '$0 $@ \[$$\] START' "$f"; then
-		grep -qm1 '::carbon.sys' "$f" && return 0
+	if ! tail -n 2 "$F" | head -n 1 | grep -q '$0 $@ \[$$\] SUCCESS'\
+		|| ! grep -q '$0 $@ \[$$\] START' "$F"; then
+		grep -qm1 '::carbon.sys' "$F" && return 0
 		echo_error 'strongbash006 В начале каждого файла должен быть:
 		echo "$0 $@ [$$] START" >&2
 		BODY
@@ -132,7 +136,7 @@ strongbash006(){
 }
 
 strongbash007(){
-	if ! tail -n 1 "$f" | grep -q 'exit 0'; then
+	if ! tail -n 1 "$F" | grep -q 'exit 0'; then
 		echo_error 'strongbash007 В конце каждого файла должен быть:
 		exit 0
 		или для библиотек:
@@ -143,25 +147,25 @@ strongbash007(){
 }
 
 strongbash008(){
-	head -n 1 "$f" | grep -qm1 '#!/bin/bash' \
+	head -n 1 "$F" | grep -qm1 '#!/bin/bash' \
 		|| echo_error 'strongbash008 Обязательно использовать #!/bin/bash даже в include'
 	return 0
 }
 
 strongbash009(){
-	egrep -n '\blet\b[^.]*=.*' "$f" \
+	egrep -n '\blet\b[^.]*=.*' "$F" \
 		&& echo_error \
 		'strongbash009 Нельзя использовать let тк дает ошибку при переходе через 0. Используйте $(())'
 	return 0
 }
 
 strongbash010(){
-	cat "$f" | grep -v strongbash010 | grep -v 'DIR\|dir' | grep -n '^[^#].*=/tmp/' \
+	cat "$F" | grep -v strongbash010 | grep -v 'DIR\|dir' | grep -n '^[^#].*=/tmp/' \
 		&& echo 'WARNING ^^^ strongbash010 Не рекомендуется использовать переменные '\
 		'для временных файлов, лучше /tmp/binname_tmpcat.$$'
-	if egrep -q '^[^#]*rm.*/tmp/.*' "$f" && \
-		! egrep '^[^#]*rm.*/tmp/.*' "$f" | fgrep -qm1 '$$'; then
-		egrep -n 'rm.*/tmp/.*' "$f"
+	if egrep -q '^[^#]*rm.*/tmp/.*' "$F" && \
+		! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep -qm1 '$$'; then
+		egrep -n 'rm.*/tmp/.*' "$F"
 		echo_error 'strongbash011 Нельзя использовать временные файлы без $$, '\
 			'лучше rm -f /tmp/binname_tmpcat.$$'
 	fi
@@ -180,10 +184,10 @@ strongbash011(){
 			| wc -m || true ) # '
 		indent=$((indent/8))
 		(( $indent > $indent_max )) && { indent_max="$indent"; indent_max_lnum=$l; }
-	done < "$f"
+	done < "$F"
 
 	if (( $indent_max > 5 )); then
-		grep -n . "$f" | grep "^$indent_max_lnum:"
+		grep -n . "$F" | grep "^$indent_max_lnum:"
 		echo_error \
 			"strongbash011 слишком большая глубина(indent=$indent_max), "\
 			"используйте ранний return или сделайте подфункции"
@@ -192,7 +196,7 @@ strongbash011(){
 }
 
 strongbash012(){
-	grep -n '.*|[ ]*[\]$' "$f"  \
+	grep -n '.*|[ ]*[\]$' "$F"  \
 		&& echo_error 'strongbash012 pipe в "| \" требуется вынести на следующую строку.
 	Пример:
 	cat 123 | grep 123 \
@@ -202,7 +206,7 @@ strongbash012(){
 }
 
 strongbash013(){
-	grep -n "^[$__SPACE]*#[^$__SPACE!#{}]." "$f" \
+	grep -n "^[$__SPACE]*#[^$__SPACE!#{}]." "$F" \
 		&& echo_error 'strongbash013 ставьте пробел после # или используйте #} #{ для ошибок indent'
 	return 0
 }
@@ -237,7 +241,7 @@ strongbash014(){
 				fsize=0
 			fi
 		fi
-	done < "$f"
+	done < "$F"
 	[ $fsize_error = TRUE ] \
 		&& echo_error \
 		"strongbash014 Слишком большая функция больше $MAX_FSIZE строк, "\
@@ -245,21 +249,22 @@ strongbash014(){
 	return 0
 }
 
-
 strongbash015(){
-	fsize=$(cat "$f" | wc -l )
-	fcomm_size=$( grep "^[$__SPACE]*#.*" "$f" | wc -l || true )
-	fcount=$( grep '()[ ]*{' "$f" | wc -l || true ) # ' #}
-	fcount=$(( fcount + 1 ))
+	fsize=$(cat "$F" | wc -l )
+	fcomm_size=$( grep "^[$__SPACE]*#.*" "$F" | wc -l || true )
+	fcount=$( grep '()[ ]*{*' "$F" | wc -l || true ) # ' #}
+	fcount=$(( fcount/2 + 1 )) # 32 строк на ф
 	if (( (fsize-fcomm_size)/fcount > $MAX_FSIZE )); then
 		echo_error \
-			"strongbash015 Слишком большой линейный файл больше $MAX_FSIZE строк, "\
+			"strongbash015 Слишком большой линейный файл" \
+			"$(((fsize-fcomm_size)/fcount)) больше $MAX_FSIZE строк, "\
 			"разбейте на функции"
 	fi
 	return 0
 }
+
 strongbash016(){
-	egrep -n ".*[$__SPACE]\$" "$f" \
+	egrep -n ".*[$__SPACE]\$" "$F" \
 		&& echo_error 'strongbash016 Уберите конечные пробелы и tab'
 	return 0
 }
@@ -274,35 +279,32 @@ strongbash017(){
 				"strongbash017 длина строки больше $MAX_CHARS используйте перенос \\ "\
 				"примеры переносов:\necho_suc \"aaaaaaaaaaaaaaaaaa\"\\ \n\"bbbbbbbb\" "
 		fi
-	done < "$f"
+	done < "$F"
 	return 0
 }
 
 strongbash018(){
-	egrep -n  "^[$__SPACE]*[^#$__SPACE]+.*[^ 0-9)&>$__SPACE]>[ ]*+[^ \$\"'[]+"  "$f" \
+	egrep -n  "^[$__SPACE]*[^#$__SPACE]+.*[^ 0-9)&>$__SPACE]>[ ]*+[^ \$\"'[]+"  "$F" \
 		&& echo_error 'strongbash018 поставьте пробел перед "text >oo"'
 	return 0
 }
 
 
 strongbash019(){
-	if ! grep -qm1 "Example: "  "$f"; then
+	if ! grep -qm1 "Example: "  "$F"; then
 		echo_error "strongbash019 добавьте пример исопльзования вашей программы"\
-			"Example: $f [argv] и или sys::usage "$@" и ###"\
+			"Example: $F [argv] и или sys::usage "$@" и ###"\
 			" --help"
 	fi
 	return 0
 }
 
-check_funcs=$( cat "$f" \
-	| grep '^.*()' \
-	| sed -n  's/^\(\S*\)().*{/\1/p' ) || true # '
 
 strongbash029(){
-	for fname in $check_funcs; do
-		if egrep -qm1 ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$f" \
-			&& ! egrep -A 1 "^$fname\(\).*\{" "$f" | grep -qm1 'set -e'; then
-			egrep -n ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$f"
+	for fname in $ALL_FUNCS; do
+		if egrep -qm1 ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$F" \
+			&& ! egrep -A 1 "^$fname\(\).*\{" "$F" | grep -qm1 'set -e'; then
+			egrep -n ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$F"
 			echo_error "strongbash029 добавьте set -e в первую строку функции $fname ,"\
 				"которая используется в конструкции \$( $fname )"
 		fi
@@ -311,8 +313,8 @@ strongbash029(){
 }
 
 strongbash030_1(){
-	for fname in $check_funcs; do
-		if egrep -n "(^|.*\W)$fname[ ]*&&.*" "$f" ; then
+	for fname in $ALL_FUNCS; do
+		if egrep -n "(^|.*\W)$fname[ ]*&&.*" "$F" ; then
 			echo_error "strongbash030_1 нельзя использовать $fname && cmd1"
 		fi
 	done
@@ -320,8 +322,8 @@ strongbash030_1(){
 }
 
 strongbash030_2(){
-	for fname in $check_funcs; do
-		if egrep -n "(^|.*\W)$fname[ ]*\|\|.*" "$f" ; then
+	for fname in $ALL_FUNCS; do
+		if egrep -n "(^|.*\W)$fname[ ]*\|\|.*" "$F" ; then
 			echo_error "strongbash030_2 нельзя использовать $fname || cmd1"
 		fi
 	done
@@ -329,8 +331,8 @@ strongbash030_2(){
 }
 
 strongbash030_3(){
-	for fname in $check_funcs; do
-		if egrep -n ".*if.*\s$fname\W+.*" "$f" ; then
+	for fname in $ALL_FUNCS; do
+		if egrep -n ".*if.*\s$fname\W+.*" "$F" ; then
 			echo_error "strongbash030_3 нельзя использовать if $fname; then"
 		fi
 	done
