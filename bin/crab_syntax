@@ -5,16 +5,16 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 sys::usage "$@"
-### --help Info:
-### --help Утилита проверки синтаксиса и ошибок bash в стиле set -eu
-### --help обязательна для всех новых файлов с 2017 года
-### --help для старых файлов переход на set -eu разрешен только после написания func/unit теста
-### --help test-имя, в котором тестируется _весь_ функционал скрипта в чистых и ошибочных ситуациях
-### --help Usage:
-### --help crab_syntax $filename|$dir bash|cc|python|html|xml
-### --help Example:
-### --help crab_syntax myfile.sh
-### --help crab_syntax myfile.sh bash
+# --help Info:
+# --help Утилита проверки синтаксиса и ошибок bash в стиле set -eu
+# --help обязательна для всех новых файлов с 2017 года
+# --help для старых файлов переход на set -eu разрешен только после написания func/unit теста
+# --help test-имя, в котором тестируется _весь_ функционал скрипта в чистых и ошибочных ситуациях
+# --help Usage:
+# --help crab_syntax $filename|$dir bash|cc|python|html|xml
+# --help Example:
+# --help crab_syntax myfile.sh
+# --help crab_syntax myfile.sh bash
 
 # Проверка базовых правил.
 maybe=0
