@@ -4,8 +4,11 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
-### --help Локальные изменения сохранятся во бекап каталоге /opt/crab.$$
-### --help Example: crab_update
+# --help Info: обновляет все краб пакеты /opt/crab/*
+# --help Info: создает symlink'и foreach /opt/crab/*/bin/crab_* /bin/crab_$name
+# --help Локальные изменения сохранятся в бекап каталоге /opt/crab.$$
+# --help Usage:
+# --help Example: crab_update
 
 create_symlink(){
 	set -eu

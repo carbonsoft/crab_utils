@@ -1,5 +1,25 @@
-### version 2018-03-06
+#!/bin/bash
 
+# echo "$0 $@ [$$] START" >&2
+# set -euEo pipefail
+
+### version 2018-03-06
+# --help Info: библиотека вспомогательных функций для работы в стиле opencarbon7
+# --help Usage:
+# --help . /opt/crab/crab_utils/bin/carbon.sys
+# --help source /opt/crab/crab_utils/bin/carbon.sys
+# --help Example:
+# --help #!/bin/bash
+# --help set -ue
+# --help . /opt/crab/crab_utils/bin/carbon.sys
+# --help sys::usage "$@"
+# --help ### --help Info: Usage: Example:
+# --help sys::arg_parse "$@"
+
+if [ "${0##*/}" = "::carbon.sys" -a "${1:-}" = "--help" ]; then
+	grep "# [-]-help" "$0"
+	exit 0
+fi
 set -euEo pipefail
 __ARGV=
 
@@ -31,8 +51,12 @@ __exit(){
 		ARGV=
 	fi
 	echo ""
-	echo "ERROR_PROG=$__BASH_SOURCE  $__ARGV ERROR_STACK=${BASH_SOURCE[@]:1}"
-	echo "ERROR_SOURCE=${BASH_SOURCE[@]:1:1} $ARGV ERROR_CMD=\"${CMD}\" ERROR_STATUS=$STATUS LINENO=${BASH_LINENO[@]:0:${#BASH_LINENO[@]}-1} FUNC: ${FUNCNAME[@]:1}"
+	echo "    ERROR_PROG=$__BASH_SOURCE  $__ARGV"
+	echo "    ERROR_STACK=${BASH_SOURCE[@]:1}"
+	echo "    ERROR_SOURCE=${BASH_SOURCE[@]:1:1} $ARGV"
+	echo "    ERROR_CMD=\"${CMD}\"\
+ ERROR_STATUS=$STATUS LINENO=${BASH_LINENO[@]:0:${#BASH_LINENO[@]}-1}\
+ FUNC: ${FUNCNAME[@]:1}"
 	echo ""
 	# echo grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
 	# grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 | grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
@@ -56,7 +80,8 @@ sys::usage(){
 	(
 		set +e
 		echo
-		grep -H '# [-][-]help' ${__BASH_SOURCE} | sed -n 's/^.*[/]\(.*\)[ ]*[ #]*--help[ ]*\(.*\)/\1 \2/p'
+		grep -H '# [-][-]help' ${__BASH_SOURCE} \
+			| sed -n 's/^.*[/]\(.*\)[ ]*[ #]*--help[ ]*\(.*\)/\1 \2/p'
 		echo
 		exit 0
 	)
@@ -95,3 +120,5 @@ sys::arg_parse() {
 	done
 	return 0
 }
+# echo "$0 $@ [$$] SUCCESS"
+# exit 0

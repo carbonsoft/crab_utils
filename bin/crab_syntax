@@ -256,8 +256,9 @@ strongbash015(){
 	fsize=$(cat "$F" | wc -l )
 	fcomm_size=$( grep "^[$__SPACE]*#.*" "$F" | wc -l || true )
 	fcount=$( grep '()[ ]*{*' "$F" | wc -l || true ) # ' #}
-	fcount=$(( fcount/2 + 1 )) # 32 строк на ф
-	if (( (fsize-fcomm_size)/fcount > $MAX_FSIZE )); then
+	[ "$fcount" -gt 1 ] && fcount=$(( fcount/2 )) # 32 строк на ф
+	avg_size=$(((fsize-fcomm_size)/(1+fcount)))
+	if [[ "$avg_size" -gt "$MAX_FSIZE" ]]; then
 		echo_error \
 			"strongbash015 Слишком большой линейный файл" \
 			"$(((fsize-fcomm_size)/fcount)) больше $MAX_FSIZE строк, "\

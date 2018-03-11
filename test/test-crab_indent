@@ -4,6 +4,9 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Info: тестирование test-crab_indent через
+### --help /opt/crab/crab_utils/test/test-crab_indent.white
+### --help Usage:
 ### --help Example: test-crab_indent
 
 

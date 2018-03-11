@@ -4,7 +4,8 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 sys::usage "$@"
-### --help утилита форматирования кода, пока поддерживает только bash
+### --help Info:
+### --help Утилита форматирования кода, пока поддерживает только bash
 ### --help добавляйте свои языки всем на радость
 ### --help Usage:
 ### --help crab_indent filename bash|cc|python|html|xml

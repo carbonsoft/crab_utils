@@ -5,12 +5,13 @@ __SILENT=TRUE
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 sys::usage "$@"
-### --help утилита поиска примеров http://www.opencarbon.ru/example
-### --help и можно свои добавлять списки "$HOME/.carbon_example_custom.urls"
-### --help Usage:
-### --help Example: crab_example sed  - примеры sed
-### --help Example: crab_example bash string - примеры bash подпримеры работы со строками
-### --help Example: crab_example update - обновить кеш всех списков
+# --help Info:
+# --help Утилита поиска примеров http://www.opencarbon.ru/example
+# --help и можно свои добавлять списки "$HOME/.carbon_example_custom.urls"
+# --help Usage:
+# --help Example: crab_example sed  - примеры sed
+# --help Example: crab_example bash string - примеры bash подпримеры работы со строками
+# --help Example: crab_example update - обновить кеш всех списков
 
 
 

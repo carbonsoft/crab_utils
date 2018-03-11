@@ -1,8 +1,11 @@
 #!/bin/bash
 
+set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Info: тестирование ::carbon.sys
+### --help Usage:
 ### --help Example: test-::carbon.sys
 
 failed=FALSE

@@ -6,6 +6,8 @@ set -euEo pipefail
 # set -euEo pipefail
 
 sys::usage "$@"
+### --help Info:
+### --help Usage:
 ### --help Example: test-crab_indent.white
 
 tmp1(){
@@ -85,7 +87,6 @@ cat /proc/meminfo \
 	)
 }
 
-
 (
 	set -x; PS4=''; . /node/bin/__vm_config;
 	set +x;
@@ -150,7 +151,7 @@ __node(){
 	# indent comment
 #}
 
-{
+f1(){
 	echo "1
 2
 3
@@ -160,9 +161,10 @@ __node(){
 7
 "
 	echo 1
+	return 0
 }
 
-{
+f2(){
 	echo '1
 2
 3
@@ -172,9 +174,10 @@ __node(){
 7
 '
 	echo 1
+	return 0
 }
 
-{
+f3(){
 	echo "1
 2
 3
@@ -183,9 +186,10 @@ __node(){
 6
 7"
 	echo 1
+	return 0
 }
 
-{
+f4(){
 	echo '1
 2
 3
@@ -194,9 +198,10 @@ __node(){
 6
 7'
 	echo 1
+	return 0
 }
 
-{
+f5(){
 	cmd1 \
 "1
 2
@@ -206,9 +211,10 @@ __node(){
 6
 7"
 	echo 1
+	return 0
 }
 
-{
+f6(){
 	cmd1 \
 '1
 2
@@ -218,9 +224,10 @@ __node(){
 6
  7'
 	echo 1
+	return 0
 }
 
-{
+f7(){
 	cmd1 \
 "1
 2
@@ -231,9 +238,10 @@ __node(){
 7
 "
 	echo 1
+	return 0
 }
 
-{
+f8(){
 	cmd1 \
 '1
 2
@@ -244,6 +252,7 @@ __node(){
  7
 '
 	echo 1
+	return 0
 }
 
 echo "$0 $@ [$$] SUCCESS" >&2

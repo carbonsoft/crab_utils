@@ -4,6 +4,9 @@ set -euEo pipefail
 echo "$0 $@ [$$] START" >&2
 
 if [ "${1:---help}" = "--help" ]; then
+	echo "Info: Утилита для бекапа БД mysql в git репозиторий"
+	echo "делает разбивку файлов split и commit и push"
+	echo "Usage:"
 	echo "Example: backup: $0 --user=root --password=mypass --host=localhost DB_NAME BACKUP_DIR"
 	echo 'Example: restore: git log; git checkout;'
 	echo 'Example: restore: for f in *.sql.*; do cat $f >>new.sql; done;'

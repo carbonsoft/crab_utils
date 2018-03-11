@@ -4,6 +4,10 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Info: тестирование crab_syntax через
+### --help /opt/crab/crab_utils/test/test-crab_syntax.white
+### --help и /opt/crab/crab_utils/test/test-crab_syntax.black
+### --help Usage:
 ### --help Example: test-crab_syntax
 
 

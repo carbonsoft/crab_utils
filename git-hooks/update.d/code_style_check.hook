@@ -209,6 +209,8 @@ read -r MAGIC_FORCE_STR tmp_tail < <(echo "${MAGIC_SALT}$(date +%Y%m%d)" | md5su
 # echo "Hook params $*"
 # API git хуков подразумевает 3 параметра:
 if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
+	echo "Info: Утилита проверки новых и новых изменных файлов на syntax и тп"
+	echo "Usage: copy $0 to server git_hook dir"
 	echo "Example: ( cd git_dir && $0 refname old_commit new_commit; )"
 	echo "Today Hash: ${MAGIC_FORCE_STR}"
 	exit 1

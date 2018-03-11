@@ -5,6 +5,8 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Info: запуск тестов foreach /opt/crab/crab_utils/test/test-*
+### --help Usage:
 ### --help Example: autotest
 
 err=0
