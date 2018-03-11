@@ -30,8 +30,12 @@ if [ -d "$1" ]; then
 	DIR="$1"
 	failed=FALSE
 	while read -r f; do
-		head -n1 "$f" | grep -qm1 '#!/bin/bash' || continue
-		/opt/crab/crab_utils/bin/crab_syntax "$f" || failed=TRUE
+		if ! head -n1 "$f" | grep -qm1 '#!/bin/bash'; then
+			continue
+		fi
+		if ! /opt/crab/crab_utils/bin/crab_syntax "$f"; then
+			failed=TRUE
+		fi
 	done< <( find "$DIR"/* -type f )
 	[ $failed = TRUE  ] && { echo FAILED; exit 1; }
 	exit 0
@@ -43,6 +47,7 @@ if [ "$syntax_style" != "bash" ]; then
 fi
 
 __SPACE=$' \t'
+__EMPTY=''
 F=$1
 
 if grep '^[#$__SPACE]* skip crab_syntax' "$F"; then
@@ -294,7 +299,6 @@ strongbash018(){
 }
 
 strongbash019(){
-	local t=""
 	if ! grep -qm1 "Info:"  "$F" \
 		|| ! grep -qm1 "Usage:"  "$F" \
 		|| ! grep -qm1 "Example:"  "$F"; then
@@ -306,9 +310,9 @@ echo Info: копирует файл со сжатием на внешний с�
 echo Usage: ${F##/*} [--verbose] [-z 0-9] src|srcdir dst|host:dst
 echo Example: ${F##/*} --verbose -z 9 myfile1.txt example.com
 Или sys::usage \"\$@\"
-### -$t-help Info:
-### -$t-help Usage:
-### -$t-help Example:"
+### -$__EMPTY-help Info:
+### -$__EMPTY-help Usage:
+### -$__EMPTY-help Example:"
 	fi
 	return 0
 }
@@ -462,13 +466,22 @@ strongbash026(){
 }
 
 strongbash027(){
-	local t=""
-	if grep -P -n '^(?!.*if)[^#].*\]\s*\|\|' "$F"; then
+	if grep -P -n '^(?!(.*if|[^\|]*&&))[^#].*\S+\s*\|\|(?!.*true).*' "$F"; then
 		echo_error \
-"strongbash027 нельзя использовать конструкции вида [ a = b ] |$t| cmd1
+"strongbash027 нельзя использовать конструкции вида [ a = b ] |$__EMPTY| cmd1
+и cmd1 |$__EMPTY| cmd2
 кроме утвержденного сахара
 используйте [ a != b ] && cmd1"
 
+	fi
+	return 0
+}
+
+strongbash028(){
+	local t=""
+	if grep -P -n '^[^#].*[\w|\s]*\|\|[\w|\s]*\|\|[\w|\s]*.*' "$F"; then
+		echo_error "strongbash028 нельзя использовать \
+			cmd1 |$__EMPTY| cmd2 |$__EMPTY| cmd3"
 	fi
 	return 0
 }
@@ -497,7 +510,7 @@ strongbash030_1(){
 strongbash030_2(){
 	for fname in $ALL_FUNCS; do
 		if egrep -n "(^|.*\W)$fname[ ]*\|\|.*" "$F" ; then
-			echo_error "strongbash030_2 нельзя использовать $fname || cmd1"
+			echo_error "strongbash030_2 нельзя использовать $fname |$__EMPTY| cmd1"
 		fi
 	done
 	return 0

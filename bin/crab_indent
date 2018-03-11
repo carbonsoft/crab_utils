@@ -11,7 +11,9 @@ sys::usage "$@"
 ### --help crab_indent filename bash|cc|python|html|xml
 ### --help Example: crab_indent myfile.sh
 if [ "${2:-}" = "" ]; then
-	head -n1 "$1" | egrep -qm1 '#!/bin/bash|#!/bin/sh' || exit 0
+	if ! head -n1 "$1" | egrep -qm1 '#!/bin/bash|#!/bin/sh'; then
+		exit 0
+	fi
 fi
 
 case "${2:-bash}" in

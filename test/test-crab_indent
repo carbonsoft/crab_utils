@@ -14,8 +14,10 @@ cp -a /opt/crab/crab_utils/test/test-crab_indent.white /tmp/test-crab_indent.whi
 
 failed=FALSE
 /opt/crab/crab_utils/bin/crab_indent /tmp/test-crab_indent.white.$$
-diff -U 10 /opt/crab/crab_utils/test/test-crab_indent.white \
-	/tmp/test-crab_indent.white.$$ || failed=TRUE
+if ! diff -U 10 /opt/crab/crab_utils/test/test-crab_indent.white \
+	/tmp/test-crab_indent.white.$$; then
+	failed=TRUE
+fi
 rm -f /tmp/test-crab_indent.white.$$
 
 if [ $failed = TRUE ]; then

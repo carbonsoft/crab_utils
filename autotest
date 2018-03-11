@@ -11,12 +11,15 @@ set -eu
 
 err=0
 
-/opt/crab/crab_utils/bin/crab_syntax /opt/crab/crab_utils || err=$((err+1))
-
+if ! /opt/crab/crab_utils/bin/crab_syntax /opt/crab/crab_utils; then
+	err=$((err+1))
+fi
 for test in /opt/crab/crab_utils/test/test-*; do
 	[ ! -x $test ] && continue
 	echo
-	$test || err=$((err+1))
+	if ! $test; then
+		err=$((err+1))
+	fi
 done
 
 

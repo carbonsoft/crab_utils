@@ -13,8 +13,10 @@ set -eu
 
 failed=FALSE
 
-/opt/crab/crab_utils/bin/crab_syntax \
-	/opt/crab/crab_utils/test/test-crab_syntax.white || failed=TRUE
+if ! /opt/crab/crab_utils/bin/crab_syntax \
+	/opt/crab/crab_utils/test/test-crab_syntax.white; then
+	failed=TRUE
+fi
 
 /opt/crab/crab_utils/bin/crab_syntax \
 	/opt/crab/crab_utils/test/test-crab_syntax.black &>/tmp/test-crab_syntax.$$ || true

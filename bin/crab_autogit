@@ -79,7 +79,9 @@ autogit_sync(){
 
 __git_config_set(){
 	cd "$ARG_DIR"
-	myip="$( ip r g 1 | grep src | sed 's/.*src //' )" || myip='127.0.0.1'
+	if ! myip="$( ip r g 1 | grep src | sed 's/.*src //' )"; then
+		myip='127.0.0.1'
+	fi
 	git config user.email "root@$myip"
 	git config user.name "crab_autogit"
 	return 0
