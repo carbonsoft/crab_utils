@@ -272,8 +272,14 @@ __exit2(){
 	return 0
 }
 
+### strongbash020 Запрещены функции LOG в утилитах
+changelog(){
+	echo ""
+	return 0
+}
+
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 ### strongbash007  В конце каждого файла должен быть exit 0
 
 echo "$0 $@ [$$] SUCCESS" >&2
-exit 0
+	exit 0

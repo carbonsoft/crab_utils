@@ -293,7 +293,6 @@ strongbash018(){
 	return 0
 }
 
-
 strongbash019(){
 	local t=""
 	if ! grep -qm1 "Info:"  "$F" \
@@ -314,6 +313,18 @@ echo Example: ${F##/*} --verbose -z 9 myfile1.txt example.com
 	return 0
 }
 
+strongbash020(){
+	for func in $ALL_FUNCS; do
+		if [[ "${func^^}" == *LOG* ]]; then
+			if grep -A 1000000 "$func" "$F" | grep -B100000 -m1 '^}' \
+				| grep -n 'date'; then
+				echo_error "strongbash020 Запрещены функции Log в утилитах"
+			fi
+		fi
+	done
+	return 0
+}
+
 list_tmpvar1=$( grep -P '^\s*\w*="{0,1}/tmp/.*"{0,1}' "$F" \
 	| sed -n 's/\(.*\W\|^\)\(\w*\)=.*/\2/p' || true )
 
@@ -329,6 +340,7 @@ strongbash021_1(){
 	fi
 	return 0
 }
+
 strongbash021_2(){
 	if grep -n -P "trap.*rm.*($grep_list_tmpvar).*(EXIT|0).*" "$F"; then
 		echo_error "strongbash021_2 запрещено удалять tmp в trap EXIT"
