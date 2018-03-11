@@ -11,6 +11,8 @@ set -euEo pipefail
 
 ### strongbash019
 sys::usage "$@"
+### --help Info: Проверяет скрипт на соглашение strongbash
+### --help Usage: crab_syntax file|dir [type]
 ### --help Example: crab_syntax test-crab_syntax.white
 
 ### strongbash001 Не выполнен crab_indent

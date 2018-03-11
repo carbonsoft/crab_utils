@@ -7,10 +7,13 @@ set +euEo pipefail
 ### strongbash006 1
 echo $0 ST#A#RT
 
-### strongbash019
-sys::usa  ge "$@"
-### --help E x a m p l e: test-crab_syntax.black
+### strongbash019 
+### проверять что есть описание программы а не только пример использования можно проверять что есть минимум два шарпа
 
+sys::usa  ge "$@"
+### --help I n f o: test-crab_syntax.black
+### --help U s a g e: ccpp src dst
+### --help E x a m p l e: ccoo myfile.txt http://example.com
 
 ### strongbash001 Не выполнен crab_indent
 {
@@ -533,7 +536,6 @@ __exit2(){
 
 ### strongbash021_5 Не рекомендуется использовать trap EXIT.
 trap _exit EXIT
-
 
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 echo S#U#C#C#E#S#S

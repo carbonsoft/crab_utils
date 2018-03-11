@@ -5,15 +5,16 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 sys::usage "$@"
-### --help утилита проверки синтаксиса и ошибок bash в стиле set -eu
+### --help Info:
+### --help Утилита проверки синтаксиса и ошибок bash в стиле set -eu
 ### --help обязательна для всех новых файлов с 2017 года
 ### --help для старых файлов переход на set -eu разрешен только после написания func/unit теста
 ### --help test-имя, в котором тестируется _весь_ функционал скрипта в чистых и ошибочных ситуациях
 ### --help Usage:
-### --help crab_syntax filename bash|cc|python|html|xml
-### --help crab_syntax $DIR recurring
-### --help Example: crab_syntax myfile.sh
-### --help Example: crab_syntax myfile.sh bash
+### --help crab_syntax $filename|$dir bash|cc|python|html|xml
+### --help Example:
+### --help crab_syntax myfile.sh
+### --help crab_syntax myfile.sh bash
 
 # Проверка базовых правил.
 maybe=0
@@ -293,10 +294,21 @@ strongbash018(){
 
 
 strongbash019(){
-	if ! grep -qm1 "Example: "  "$F"; then
-		echo_error "strongbash019 добавьте пример исопльзования вашей программы"\
-			"Example: $F [argv] и или sys::usage "$@" и ###"\
-			" --help"
+	local t=""
+	if ! grep -qm1 "Info:"  "$F" \
+		|| ! grep -qm1 "Usage:"  "$F" \
+		|| ! grep -qm1 "Example:"  "$F"; then
+		echo_error \
+"strongbash019
+Добавьте обязательно:
+if [ \${1:---help} = --help ]; then
+echo Info: копирует файл со сжатием на внешний сервер
+echo Usage: ${F##/*} [--verbose] [-z 0-9] src|srcdir dst|host:dst
+echo Example: ${F##/*} --verbose -z 9 myfile1.txt example.com
+Или sys::usage \"\$@\"
+### -$t-help Info:
+### -$t-help Usage:
+### -$t-help Example:"
 	fi
 	return 0
 }
@@ -476,7 +488,7 @@ strongbash030_3(){
 }
 
 ###
-
+self_skip='strongbash021_1 strongbash021_2 strongbash021_3 strongbash021_4 strongbash021_5'
 if [ $maybe == 1 ]; then
 	strongbash001
 	strongbash002
@@ -484,6 +496,9 @@ if [ $maybe == 1 ]; then
 	strongbash017
 else
 	for check in $( typeset -F | grep strongbash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
+		if [[ "${0##*/}" == "crab_syntax" ]]; then
+			[[ " $self_skip " == *" $check "* ]] && continue
+		fi
 		$check
 	done
 fi
