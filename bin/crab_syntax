@@ -461,6 +461,18 @@ strongbash026(){
 	return 0
 }
 
+strongbash027(){
+	local t=""
+	if grep -P -n '^(?!.*if)[^#].*\]\s*\|\|' "$F"; then
+		echo_error \
+"strongbash027 нельзя использовать конструкции вида [ a = b ] |$t| cmd1
+кроме утвержденного сахара
+используйте [ a != b ] && cmd1"
+
+	fi
+	return 0
+}
+
 strongbash029(){
 	for fname in $ALL_FUNCS; do
 		if egrep -qm1 ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$F" \
