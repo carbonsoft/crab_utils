@@ -118,7 +118,7 @@ function GetShIndent()
 		return curind
 	endif
 
-	if curline =~ "^'[^'].*$" && prevline !~ "^'.*'"
+	if curline =~ "^'[^'].*$" && curline !~ "^'.*'"
 		let s:indent_echo2 = prevind
 		return curind
 	endif

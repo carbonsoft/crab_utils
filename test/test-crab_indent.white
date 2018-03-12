@@ -10,6 +10,12 @@ sys::usage "$@"
 ### --help Usage:
 ### --help Example: test-crab_indent.white
 
+declare -a servers=(
+'https://example.com'
+'http://example.com'
+'http://127.0.0.1/cache/'
+)
+
 tmp1(){
 	echo 1
 	return 0
