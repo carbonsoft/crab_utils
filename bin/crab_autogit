@@ -14,17 +14,24 @@ usage(){
 	echo "Example: $0 \$DIR # once add, commit, push"
 	echo "if you install \$dir=/ then .gitignore=* and only added -f subdir /etc"
 	echo "you can edit \$DIR/.autogit to add another subdir"
+	# echo Путь должен быть абсолютным, иначе пипец.
+	# и лучше это проверять....[ -d $dir ] && [ $dir = /* ]
 	exit 0
 }
+
+
 [ "${1:---help}" = "--help" ] && usage
 
 ARGV="$@"
+
+
 __exit(){
 	local ret=$1
 	[ "$ret" = 0 ] && echo "$0 $ARGV [$$] SUCCESS" >&2 \
 		|| echo "$0 $ARGV [$$] FAILED" >&2
 	exit $ret
 }
+
 
 __git_find_add(){
 	local adddir="$1"
@@ -48,15 +55,21 @@ __git_find_add(){
 		done
 	return 0
 }
+
+
 autogit_sync(){
 	local subdir t excludes msg
 	cd "$ARG_DIR"
 	[ ! -d ".git" -o ! -s ".autogit" -o ! -f ".gitignore" ] && __init_dir
-	__git_config_set
+	__git_config_set  # эта функция вызывается при инициализации, наверное надо оставить в одном месте.
+
 	# по умолчанию git add добавляет все найденые вложенные .git как submodule
 	# но нам это не надо, поэтому работаем через find ! -path '*.git*'
 	# todo добавить опцию в git
 	grep -xqm1 '*' .gitignore && force='-f' || force=''
+	# откровенно не нравиться мне замена gitignore новой сущностью...
+	# Может суб git добавлять автоматом в ignore(и запоминать, что на самом деле их не надо игнорить), а файлы таких суб гитов форсить.
+	# Итого, там где нет суб гитов, будет работать стандартный механизм. А костыли только внутри субгитов.
 	while read -r subdir t excludes; do
 		[ "${subdir:0:1}" = "#" -o -z "$subdir" ] && continue
 		if [ ! -d "$subdir" ]; then
@@ -72,20 +85,24 @@ autogit_sync(){
 	done < .autogit
 	git gc
 	if git remote | grep -xqm1 origin; then
-		git push origin master:master
+		git push origin master:master  # force push может?
 	fi
 	return 0
 }
 
+
 __git_config_set(){
 	cd "$ARG_DIR"
+	# Недавно делал $(ip route get 1 | sed 's/.*src //; t; d') минус греп
 	if ! myip="$( ip r g 1 | grep src | sed 's/.*src //' )"; then
-		myip='127.0.0.1'
+		myip='127.0.0.1'  # localhost, или $(hostname) ?
 	fi
 	git config user.email "root@$myip"
 	git config user.name "crab_autogit"
 	return 0
 }
+
+
 __init_dir(){
 	cd "$ARG_DIR"
 	[ ! -d ".git" ] && git init
@@ -106,6 +123,7 @@ __init_dir(){
 	return 0
 }
 
+
 __ssh_repo_init(){
 	local rdir=${ARG_ORIGIN##*:}
 	rhost="${ARG_ORIGIN%%:*}"
@@ -113,6 +131,7 @@ __ssh_repo_init(){
 	if [ ! -f /root/.ssh/id_rsa ]; then
 		ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa
 	fi
+	# Почему не запустить ssh-copy-id в интерактивном варианте?
 	if ! ssh -oBatchMode=yes "$rhost" exit 0; then
 		if ! read -r -p "plz type enter for manual type ssh password(enter):" -t 10; then
 			echo -e "\nHost key verification failed plz"
@@ -120,11 +139,13 @@ __ssh_repo_init(){
 		fi
 		cat /root/.ssh/id_rsa.pub | ssh "$rhost" "cat >> ~/.ssh/authorized_keys"
 	fi
+	# git init безопасен, можно его просто запустить безусловно.
 	if ! ssh "$rhost" test -f "$rdir/HEAD"; then
 		ssh "$rhost"  git init --bare "$rdir"
 	fi
 	return 0
 }
+
 
 __cron_init(){
 	# настроим cron на раз в день
@@ -137,9 +158,11 @@ HOME=/root
 01 07 * * * * root /opt/crab/crab_utils/bin/crab_autogit "${ARG_DIR}" \
   &>> /var/log/${cron_name}.log
 EOF
-	/etc/init.d/crond restart
+	/etc/init.d/crond restart  # почему не использовать более переносимый вариант service crond restart ?
 	return 0
 }
+
+
 autogit_install(){
 	cd "$ARG_DIR"
 	[[ "${ARG_ORIGIN:-}" == *:/*  ]] && __ssh_repo_init
@@ -150,14 +173,16 @@ autogit_install(){
 	fi
 	autogit_sync
 	__cron_init
-	autogit_sync
+	autogit_sync  # зачем второй раз?
 	return 0
 }
+
 
 if [ $# = 1 ]; then
 	ARG_DIR="$1"
 	autogit_sync
 elif [ "${1:-}" = "install" -a "${2:-}" != "" ]; then
+	# сложное условие, в итоге на autogit install будет ошибка unknown command. Не критично конечно.
 	ARG_DIR="$2"
 	ARG_ORIGIN="${3:-}"
 	autogit_install
@@ -169,3 +194,5 @@ fi
 
 echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
+
+# Местами сливается код. Мне не хватает вертикальных разделителей. Подход к форматированию можно частично у pep8 позаимствовать.
