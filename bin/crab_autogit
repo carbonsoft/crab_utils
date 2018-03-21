@@ -8,11 +8,12 @@ usage(){
 	echo "Info: Утилита добавляет в .git все файлы, в том числе вложенные в другие git каталоги"
 	echo "и автоматически раз в день коммитит и, если указано, отправляет на сервер"
 	echo "Автоматом добавляет задачу cron.d '01 07 * * * * root $0 \$DIR'"
-	echo "Usage: $0 [install] \$DIR [origin]"
-	echo "Example: $0 install \$DIR # install for newdir"
+	echo "Usage: $0 install \$DIR [origin]"
+	echo "Usage: $0 save \$DIR [user_commit_message]"
+	echo "Example: $0 install \$DIR  # install for newdir"
 	echo "Example: $0 install \$DIR git@gitlab.example.com:autogit/\$myhostname"
 	echo "Example: $0 install \$DIR root@example.com:/home/autogit/\$myhostname_\$dir"
-	echo "Example: $0 \$DIR # once add, commit, push"
+	echo "Example: $0 save \$DIR \"Fix config\"  # once add, commit, push"
 	echo "if you install \$dir=/ then .gitignore=* and only added -f subdir /etc"
 	echo "you can edit \$DIR/.autogit to add another subdir"
 	exit 0
@@ -178,13 +179,30 @@ autogit_install(){
 }
 
 
-if [ $# = 1 ]; then
-	ARG_DIR="$1"
+check_and_set_dir() {
+	local dir="$1"
+	if ! [ -d "$dir" ] || ! [[ $dir == /* ]]; then
+		echo "Error! You must pass absolute path to git dir!" >&2
+		usage
+		return 1
+	fi
+	ARG_DIR="$dir"
+	return 0
+}
+
+
+if [ "${1:-}" = "save" ]; then
+	check_and_set_dir "${2:-}"
+	if [ -n "${3:-}" ]; then
+		USER_MSG="$3"
+	fi
 	autogit_sync
-elif [ "${1:-}" = "install" -a "${2:-}" != "" ]; then
-	ARG_DIR="$2"
+
+elif [ "${1:-}" = "install" ]; then
+	check_and_set_dir "${2:-}"
 	ARG_ORIGIN="${3:-}"
 	autogit_install
+
 else
 	echo -e "\nUnknown command: ${1:-}\n"
 	usage
