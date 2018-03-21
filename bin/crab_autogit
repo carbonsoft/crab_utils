@@ -137,7 +137,15 @@ HOME=/root
 01 07 * * * * root /opt/crab/crab_utils/bin/crab_autogit "${ARG_DIR}" \
   &>> /var/log/${cron_name}.log
 EOF
-	/etc/init.d/crond restart
+	if [ -x /etc/init.d/crond ]; then
+		/etc/init.d/crond restart
+	elif [ -x /etc/init.d/cron ]; then
+		/etc/init.d/cron restart
+	elif chkconfig --list crond &>/dev/null; then
+		service crond restart
+	else
+		echo "Cron init script not found, pls, restart cron manually."
+	fi
 	return 0
 }
 autogit_install(){
