@@ -3,6 +3,7 @@
 set -euEo pipefail
 echo "$0 $@ [$$] START" >&2
 
+
 usage(){
 	echo "Info: Утилита добавляет в .git все файлы, в том числе вложенные в другие git каталоги"
 	echo "и автоматически раз в день коммитит и, если указано, отправляет на сервер"
@@ -16,15 +17,20 @@ usage(){
 	echo "you can edit \$DIR/.autogit to add another subdir"
 	exit 0
 }
+
+
 [ "${1:---help}" = "--help" ] && usage
 
 ARGV="$@"
+
+
 __exit(){
 	local ret=$1
 	[ "$ret" = 0 ] && echo "$0 $ARGV [$$] SUCCESS" >&2 \
 		|| echo "$0 $ARGV [$$] FAILED" >&2
 	exit $ret
 }
+
 
 __git_find_add(){
 	local adddir="$1"
@@ -48,6 +54,8 @@ __git_find_add(){
 		done
 	return 0
 }
+
+
 autogit_sync(){
 	local subdir t excludes msg
 	cd "$ARG_DIR"
@@ -77,6 +85,7 @@ autogit_sync(){
 	return 0
 }
 
+
 __git_config_set(){
 	cd "$ARG_DIR"
 	if ! myip="$( ip r g 1 | grep src | sed 's/.*src //' )"; then
@@ -86,6 +95,8 @@ __git_config_set(){
 	git config user.name "crab_autogit"
 	return 0
 }
+
+
 __init_dir(){
 	cd "$ARG_DIR"
 	[ ! -d ".git" ] && git init
@@ -106,6 +117,7 @@ __init_dir(){
 	return 0
 }
 
+
 __ssh_repo_init(){
 	local rdir=${ARG_ORIGIN##*:}
 	rhost="${ARG_ORIGIN%%:*}"
@@ -125,6 +137,7 @@ __ssh_repo_init(){
 	fi
 	return 0
 }
+
 
 __cron_init(){
 	# настроим cron на раз в день
@@ -148,6 +161,8 @@ EOF
 	fi
 	return 0
 }
+
+
 autogit_install(){
 	cd "$ARG_DIR"
 	[[ "${ARG_ORIGIN:-}" == *:/*  ]] && __ssh_repo_init
@@ -162,6 +177,7 @@ autogit_install(){
 	return 0
 }
 
+
 if [ $# = 1 ]; then
 	ARG_DIR="$1"
 	autogit_sync
@@ -174,6 +190,7 @@ else
 	usage
 	exit 1
 fi
+
 
 echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
