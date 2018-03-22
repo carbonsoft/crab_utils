@@ -130,7 +130,7 @@ __ssh_repo_init(){
 		ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa
 	fi
 	if ! ssh -oBatchMode=yes -oStrictHostKeyChecking=no "$rhost" exit 0; then
-		read -t 10 -p "SSH not work, be ready for input password[enter]:" _
+		read -r -t 10 -p "SSH not work, be ready for input password[enter]:" _
 		# Упадём, если никого нет у консоли.
 		ssh-copy-id "$rhost"
 	fi
