@@ -46,7 +46,7 @@ __git_safe_add() {
 		# git_dir == some_dir_with_.git/.
 		git add --all "$git_dir"
 	done
-	git add --all $dir
+	git add --all $dir/.
 	return 0
 }
 
