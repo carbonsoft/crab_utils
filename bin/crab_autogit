@@ -128,7 +128,7 @@ __ssh_repo_init(){
 		ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa
 	fi
 	if ! ssh -oBatchMode=yes -oStrictHostKeyChecking=no "$rhost" exit 0; then
-		ssh-copy-id "$rhost"
+		timeout 20 ssh-copy-id "$rhost"
 	fi
 	if ! ssh "$rhost" test -f "$rdir/HEAD"; then
 		ssh "$rhost"  git init --bare "$rdir"
