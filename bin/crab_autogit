@@ -127,12 +127,8 @@ __ssh_repo_init(){
 	if [ ! -f /root/.ssh/id_rsa ]; then
 		ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa
 	fi
-	if ! ssh -oBatchMode=yes "$rhost" exit 0; then
-		if ! read -r -p "plz type enter for manual type ssh password(enter):" -t 10; then
-			echo -e "\nHost key verification failed plz"
-			__exit 1
-		fi
-		cat /root/.ssh/id_rsa.pub | ssh "$rhost" "cat >> ~/.ssh/authorized_keys"
+	if ! ssh -oBatchMode=yes -oStrictHostKeyChecking=no "$rhost" exit 0; then
+		ssh-copy-id "$rhost"
 	fi
 	if ! ssh "$rhost" test -f "$rdir/HEAD"; then
 		ssh "$rhost"  git init --bare "$rdir"
