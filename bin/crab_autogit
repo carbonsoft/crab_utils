@@ -62,7 +62,7 @@ autogit_sync() {
 		# Небольшая оптимизация, когда много исключений
 		# Не будем ходить в папки, которые в игнор или без изменений.
 		for sub_dir in $(find -mindepth 1 -maxdepth 1 -type d); do
-			if ! git status | grep -qm1 "nothing to commit"; then
+			if ! git status "$sub_dir" | grep -qm1 "nothing to commit"; then
 				__git_safe_add "$sub_dir"
 			fi
 		done
