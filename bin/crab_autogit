@@ -71,9 +71,9 @@ autogit_sync() {
 
 	if ! git status | grep -qm1 'nothing to commit'; then
 		git commit -F - <<-EOF
-			$0 $ARG_DIR ${USER_MSG:-}
-			$( git status -s | head -n 100 || true )
-			...
+		$0 $ARG_DIR ${USER_MSG:-}
+		$( git status -s | head -n 100 || true )
+		...
 		EOF
 	fi
 
