@@ -5,16 +5,18 @@ echo "$0 $@ [$$] START" >&2
 
 
 usage(){
-	echo "Info: Утилита добавляет в .git все файлы, в том числе вложенные в другие git каталоги"
-	echo "и автоматически раз в день коммитит и, если указано, отправляет на сервер"
-	echo "Автоматом добавляет задачу cron.d '01 07 * * * * root $0 \$DIR'"
 	echo "Usage: $0 install \$DIR [origin]"
 	echo "Usage: $0 save \$DIR [user_commit_message]"
+	echo
 	echo "Example: $0 install \$DIR  # install for newdir"
 	echo "Example: $0 install \$DIR git@gitlab.example.com:autogit/\$myhostname"
 	echo "Example: $0 install \$DIR root@example.com:/home/autogit/\$myhostname_\$dir"
 	echo "Example: $0 save \$DIR \"Fix config\"  # once add, commit, push"
-	echo "if you install \$dir=/ then .gitignore=* and only added -f subdir /etc"
+	echo
+	echo "Info: Утилита добавляет в .git все файлы, в том числе вложенные в другие git каталоги"
+	echo "и автоматически раз в день коммитит и, если указано, отправляет на сервер"
+	echo "Автоматом добавляет задачу cron.d '01 07 * * * * root $0 \$DIR'"
+	echo "if you install \$dir=/ then .gitignore=/*,!/etc"
 	echo "you can edit \$DIR/.gitignore to customize."
 	exit 0
 }
@@ -56,7 +58,7 @@ autogit_sync() {
 	[ ! -d ".git" ] && __init_dir
 	__git_config_set
 
-	if grep -xqm1 '*' .gitignore; then
+	if [ -f .gitignore ] && egrep -xqm1 '/?\*' .gitignore; then
 		# Небольшая оптимизация, когда много исключений
 		# Не будем ходить в папки, которые в игнор или без изменений.
 		for sub_dir in find -mindepth 1 -maxdepth 1 -type d; do
@@ -102,7 +104,11 @@ __init_dir(){
 	[ ! -d ".git" ] && git init
 	__git_config_set
 	if [ "$ARG_DIR" = "/" ] && [ ! -f ".gitignore" ]; then
-		echo -e '*\n!.gitignore\n' > .gitignore
+		cat > .gitignore <<-EOF
+		/*
+		!/.gitignore
+		!/etc
+		EOF
 	fi
 	if [ -f ".gitignore" ]; then
 		git add .gitignore
