@@ -114,7 +114,7 @@ __init_dir(){
 		git add .gitignore
 	fi
 	if ! git status | grep 'nothing to commit'; then
-		git commit -m init --alow-empty
+		git commit -m init --allow-empty
 	fi
 	return 0
 }
