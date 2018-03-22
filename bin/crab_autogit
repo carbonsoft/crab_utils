@@ -72,11 +72,11 @@ autogit_sync() {
 	fi
 
 	if ! git status | grep -qm1 'nothing to commit'; then
-		git commit -F - <<-EOF
-		$0 $ARG_DIR ${USER_MSG:-}
-		$( git status -s | head -n 100 || true )
-		...
-		EOF
+		git commit -F - <<EOF
+$0 $ARG_DIR ${USER_MSG:-}
+$( git status -s | head -n 100 || true )
+...
+EOF
 	fi
 
 	git gc
@@ -104,11 +104,11 @@ __init_dir(){
 	[ ! -d ".git" ] && git init
 	__git_config_set
 	if [ "$ARG_DIR" = "/" ] && [ ! -f ".gitignore" ]; then
-		cat > .gitignore <<-EOF
-		/*
-		!/.gitignore
-		!/etc
-		EOF
+		cat > .gitignore <<EOF
+/*
+!/.gitignore
+!/etc
+EOF
 	fi
 	if [ -f ".gitignore" ]; then
 		git add .gitignore
@@ -205,6 +205,14 @@ elif [ "${1:-}" = "install" ]; then
 	check_and_set_dir "${2:-}"
 	ARG_ORIGIN="${3:-}"
 	autogit_install
+
+# Для совместимости со старыми версиями, $0 /dir - эквивалентно $0 save /dir
+elif [ ! -z "${1:-}" -a -d "${1:-}" ]; then
+	check_and_set_dir "${1:-}"
+	if [ -n "${2:-}" ]; then
+		USER_MSG="$2"
+	fi
+	autogit_sync
 
 else
 	echo -e "\nUnknown command: ${1:-}\n"
