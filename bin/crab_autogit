@@ -121,14 +121,18 @@ __init_dir(){
 
 
 __ssh_repo_init(){
+	local _
 	local rdir=${ARG_ORIGIN##*:}
+
 	rhost="${ARG_ORIGIN%%:*}"
 	[[ "$rhost" != *@* ]] && rhost="root@$rhost"
 	if [ ! -f /root/.ssh/id_rsa ]; then
 		ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa
 	fi
 	if ! ssh -oBatchMode=yes -oStrictHostKeyChecking=no "$rhost" exit 0; then
-		timeout 20 ssh-copy-id "$rhost"
+		read -t 10 -p "SSH not work, be ready for input password[enter]:" _
+		# Упадём, если никого нет у консоли.
+		ssh-copy-id "$rhost"
 	fi
 	if ! ssh "$rhost" test -f "$rdir/HEAD"; then
 		ssh "$rhost"  git init --bare "$rdir"
