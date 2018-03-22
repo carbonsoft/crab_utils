@@ -149,7 +149,7 @@ SHELL=/bin/bash
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 MAILTO=root
 HOME=/root
-01 07 * * * * root /opt/crab/crab_utils/bin/crab_autogit "${ARG_DIR}" \
+01 07 * * * * root /opt/crab/crab_utils/bin/crab_autogit save "${ARG_DIR}" \
   &>> /var/log/${cron_name}.log
 EOF
 	if [ -x /etc/init.d/crond ]; then
