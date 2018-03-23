@@ -287,6 +287,13 @@ changelog(){
 ### лучше проверять окружение и вызвать сразу нужное If centos if ubintu if dir
 cmd1 && cmd2 || cmd3
 
+### strongbash031
+cat > /tmp/tmptest <<EOF
+/*
+!/.gitignore
+!/etc
+EOF
+
 
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 ### strongbash007  В конце каждого файла должен быть exit 0
