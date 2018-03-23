@@ -535,7 +535,7 @@ strongbash031(){
 strongbash032(){
 	if ! head -40 "$F" | grep -qm1 "Info:"; then
 		echo_error "strongbash032 описание скрипта должно быть в начале файла "\
-					"(help или usage должен располагаться в начале файла)"
+			"(help или usage должен располагаться в начале файла)"
 	fi
 	return 0
 }
