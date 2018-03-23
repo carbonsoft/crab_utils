@@ -35,49 +35,58 @@ __exit(){
 }
 
 
-__git_safe_add() {
-	# Добавим вначале файлы из всех вложенных суб-гитов, чтобы избежать их добавления как суб_модулей.
-	# Затем добавим саму запрашиваемую папку.
-	local dir="$1"
-	local git_dir
+__git_find_add() {
+	local adddir="$1"
+	local excludes="$2"
+	local force="$3"
+	local findsubdir
+# git add . добавляет вложенные .git как submodule нам так не надо, но это не отключить
+# нам должно бы подойти такой find
+# find "$subdir" ! -type d ! -path '*.git*' $excludes \
+# | xargs -n 100 git add -f --
+# Но git add не может одновременно добавлять xargs -n 100 файлы обычные
+# и входящие в другие submodule, а добавлять под одному xargs -n 1 это очень долго
+# поэтому делаем небольшой воркараунд, чтобы добавлять по отдельныму каталогу
 
-	for git_dir in $(find $dir -depth -mindepth 2 -type d -name .git | sed 's/git$//'); do
-		# -depth - чтобы вначале добавлялись самые глубокие папки. Если есть вложенности.
-		# git_dir == some_dir_with_.git/.
-		git add --all "$git_dir"
-	done
-	git add --all $dir/.
+	[ -n "$excludes" ] && excludes="! -path ${excludes// / ! -path }"
+	find "$adddir" -type d '!' -path '**.git*' $excludes \
+		| while read -r findsubdir; do
+			find "$findsubdir" -maxdepth 1 ! -type d '!' -path '*.git*' -print0 \
+			| xargs -t -r -0 -n100 git add $force 2>&1 \
+			| grep -v 'Nothing\|Maybe' || true;
+		done
 	return 0
 }
 
 
 autogit_sync() {
-	local current_branch sub_dir
+	local subdir t excludes msg current_branch
 	cd "$ARG_DIR"
 
-	[ ! -d ".git" ] && __init_dir
+	[ ! -d ".git" -o ! -s ".autogit" -o ! -f ".gitignore" ] && __init_dir
 	__git_config_set
 
-	if [ -f .gitignore ] && egrep -xqm1 '/?\*' .gitignore; then
-		# Небольшая оптимизация, когда много исключений
-		# Не будем ходить в папки, которые в игнор или без изменений.
-		for sub_dir in $(find -mindepth 1 -maxdepth 1 -type d); do
-			if ! git status "$sub_dir" | grep -qm1 "nothing to commit"; then
-				__git_safe_add "$sub_dir"
-			fi
-		done
-		git add --all .
-	else
-		__git_safe_add .
-	fi
 
-	if ! git status | grep -qm1 'nothing to commit'; then
-		git commit -F - <<EOF
-$0 $ARG_DIR ${USER_MSG:-}
+	# по умолчанию git add добавляет все найденые вложенные .git как submodule
+	# но нам это не надо, поэтому работаем через find ! -path '*.git*'
+	# todo добавить опцию в git
+	grep -xqm1 '*' .gitignore && force='-f' || force=''
+	while read -r subdir t excludes; do
+		[ "${subdir:0:1}" = "#" -o -z "$subdir" ] && continue
+		if [ ! -d "$subdir" ]; then
+			echo "crab_autogit: Not found $ARG_DIR/$subdir"
+			continue
+		fi
+		__git_find_add "$subdir" "$excludes" "$force"
+		if ! git status | grep -qm1 'nothing to commit'; then
+			git commit -a -F - <<EOF
+${USER_MSG:-}
+$0 $ARG_DIR: ${subdir} $t $excludes ${USER_MSG:-}
 $( git status -s | head -n 100 || true )
 ...
 EOF
-	fi
+		fi
+	done < .autogit
 
 	git gc
 	if git remote | grep -xqm1 origin; then
@@ -103,18 +112,27 @@ __init_dir(){
 	cd "$ARG_DIR"
 	[ ! -d ".git" ] && git init
 	__git_config_set
-	if [ "$ARG_DIR" = "/" ] && [ ! -f ".gitignore" ]; then
-		cat > .gitignore <<EOF
-/*
-!/.gitignore
-!/etc
+	if [ ! -s ".autogit" ]; then
+		cat > .autogit <<EOF
+# dir ! exclude1 exclude2
+# Example:
+# etc ! etc/tmp1 etc/cache
+$( [ "$ARG_DIR" = "/" ] && echo '/etc/' || echo '.' )
 EOF
 	fi
-	if [ -f ".gitignore" ]; then
-		git add .gitignore
+
+	if [ ! -f ".gitignore" ]; then
+		cat > .gitignore <<EOF
+#plz edit .autogit
+*
+!.gitignore
+!.autogit
+EOF
 	fi
-	if ! git status | grep 'nothing to commit'; then
-		git commit -m init --allow-empty
+
+	git add .autogit .gitignore
+ 	if ! git status | grep 'nothing to commit'; then
+		git commit -am init
 	fi
 	return 0
 }
