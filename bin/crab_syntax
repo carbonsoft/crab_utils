@@ -532,14 +532,6 @@ strongbash031(){
 	return 0
 }
 
-strongbash032(){
-	if ! head -40 "$F" | grep -qm1 "Info:"; then
-		echo_error "strongbash032 описание скрипта должно быть в начале файла "\
-			"(help или usage должен располагаться в начале файла)"
-	fi
-	return 0
-}
-
 ###
 self_skip='strongbash021_1 strongbash021_2 strongbash021_3 strongbash021_4 strongbash021_5'
 if [ $maybe == 1 ]; then
