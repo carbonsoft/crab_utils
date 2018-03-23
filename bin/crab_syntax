@@ -525,6 +525,13 @@ strongbash030_3(){
 	return 0
 }
 
+strongbash031(){
+	if egrep -n '.*[<][<]-EOF.*' "$F"; then
+		echo_error "strongbash031 нельзя использовать -EOF, используйте обычный EOF"
+	fi
+	return 0
+}
+
 ###
 self_skip='strongbash021_1 strongbash021_2 strongbash021_3 strongbash021_4 strongbash021_5'
 if [ $maybe == 1 ]; then
