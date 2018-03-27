@@ -62,6 +62,75 @@ ALL_FUNCS=$( cat "$F" \
 	| grep '^.*()' \
 	| sed -n  's/^\(\S*\)().*{/\1/p' ) || true # '
 
+
+declare -A F_LOCAL_VARS
+declare -A F_UNKNOWN_VARS
+GLOBAL_VAR_LIST=''
+FUNCT_LIST=''
+__parse_variables(){
+	local var_name=''
+	local cur_fname=''
+	local line=''
+	local is_local_declare=''
+
+	while IFS='' read -r line; do
+		[[ "$line" = "#"* ]] && continue
+		if [[ "$line" == *[a-z0-9:_]'()'*'{' ]]; then
+			cur_fname="${line//[ {()]/}"
+			[[ " $FUNCT_LIST " == *" $cur_fname "* ]] && continue
+			FUNCT_LIST="$FUNCT_LIST $cur_fname"
+			continue
+		fi
+		if [[ "$line" == '}' ]]; then
+			cur_fname=""
+			continue
+		fi
+
+		# определяем использование переменных
+		while read -r var_name; do
+			# работаем только внутри функций
+			[ "$cur_fname" == "" ] && continue
+			# Проверяем, что переменная уже сохранена
+			[[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
+			[[ " ${F_UNKNOWN_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
+
+			F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]:-} $var_name"
+
+		done < <(echo "$line" | tr '$' '\n' | tail -n +2 | sed -n 's/^{*\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p')
+
+		# определяем определение переменных
+		[[ "$line" != *[a-z0-9_]=[^=]* ]] && continue
+		[[ "$line" == *[a-z0-9_]=[^=]*[\ ][\;]* ]] && continue
+		var_name="${line%%=*}"
+		[[ "$var_name" = *[\"\']* ]] && continue
+		[[ "$var_name" = *"local "* ]] && is_local_declare=TRUE || is_local_declare=FALSE
+		var_name="${var_name##* }"
+		var_name="${var_name##*$'\t'}"
+		[ "$var_name" = "" ] && continue
+		[[ " LANG IFS " == *" $var_name "* ]] && continue
+
+
+		if [ $is_local_declare = TRUE ]; then
+			[[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
+			F_LOCAL_VARS[$cur_fname]="${F_LOCAL_VARS[$cur_fname]:-} $var_name"
+			continue
+		fi
+		if [ "$cur_fname" != "" ]; then
+			[[ " ${F_UNKNOWN_VARS[$cur_fname]} " == *" $var_name "* ]] && continue
+			F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]} $var_name"
+			continue
+		fi
+		if [ "$cur_fname" = "" ]; then
+			[[ " $GLOBAL_VAR_LIST " == *" $var_name "* ]] && continue
+			GLOBAL_VAR_LIST="$GLOBAL_VAR_LIST $var_name"
+			continue
+		fi
+	done < "$F"
+	return 0
+}
+
+__parse_variables
+
 echo_error(){
 	ERROR=$((ERROR+1))
 	echo -e "^^^ERROR $@"
@@ -537,6 +606,30 @@ strongbash032(){
 		echo_error "strongbash032 описание скрипта должно быть в начале файла "\
 			"(help или usage должен располагаться в начале файла)"
 	fi
+	return 0
+}
+
+strongbash033(){
+	for fname in $FUNCT_LIST; do
+		for var in ${F_UNKNOWN_VARS[$fname]}; do
+			if [[ "$GLOBAL_VAR_LIST" == *" $var "* ]] && [ "$var" != "${var^^}" ]; then
+				echo_error "strongbash033_1 глобальная переменная $var должна быть в верхнем регистре"
+			else
+				:
+				# пропускаем, т.к. дает большое количество ложных срабатываний
+				# echo_error "strongbash033_2 в функции $fname переменная $var не объявлена как local"
+			fi
+		done
+		for var in ${F_LOCAL_VARS[$fname]:-}; do
+			if [[ "$GLOBAL_VAR_LIST" == *" $var "* ]]; then
+				echo_error "strongbash033_3 в функции $fname переопределена глобальная переменная $var"
+			fi
+			if [ "$var" != "${var,,}" ]; then
+				echo_error "strongbash033_4 в функции $fname имя локальной переменной $var"\
+					"должна быть в нижнем регистре"
+			fi
+		done
+	done
 	return 0
 }
 
