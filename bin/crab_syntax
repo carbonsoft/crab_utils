@@ -612,7 +612,7 @@ strongbash032(){
 
 strongbash033(){
 	for fname in $FUNCT_LIST; do
-		for var in ${F_UNKNOWN_VARS[$fname]}; do
+		for var in ${F_UNKNOWN_VARS[$fname]:-}; do
 			if [[ "$GLOBAL_VAR_LIST" == *" $var "* ]] && [ "$var" != "${var^^}" ]; then
 				echo_error "strongbash033_1 глобальная переменная $var должна быть в верхнем регистре"
 			else
