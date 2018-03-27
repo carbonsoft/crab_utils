@@ -24,7 +24,7 @@ if [ "${1:-}" = "--maybe" ]; then
 	shift
 fi
 
-syntax_style=${2:-bash}
+SYNTAX_STYLE=${2:-bash}
 
 if [ -d "$1" ]; then
 	DIR="$1"
@@ -41,8 +41,8 @@ if [ -d "$1" ]; then
 	exit 0
 fi
 
-if [ "$syntax_style" != "bash" ]; then
-	echo "not supported \"$syntax_style\" yet. plz add new style"
+if [ "$SYNTAX_STYLE" != "bash" ]; then
+	echo "not supported \"$SYNTAX_STYLE\" yet. plz add new style"
 	exit 0
 fi
 
@@ -96,7 +96,8 @@ __parse_variables(){
 
 			F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]:-} $var_name"
 
-		done < <(echo "$line" | tr '$' '\n' | tail -n +2 | sed -n 's/^{*\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p')
+		done < <(echo "$line" | tr '$' '\n' | tail -n +2 \
+			| sed -n 's/^{*\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p')
 
 		# определяем определение переменных
 		[[ "$line" != *[a-z0-9_]=[^=]* ]] && continue
@@ -116,8 +117,8 @@ __parse_variables(){
 			continue
 		fi
 		if [ "$cur_fname" != "" ]; then
-			[[ " ${F_UNKNOWN_VARS[$cur_fname]} " == *" $var_name "* ]] && continue
-			F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]} $var_name"
+			[[ " ${F_UNKNOWN_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
+			F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]:-} $var_name"
 			continue
 		fi
 		if [ "$cur_fname" = "" ]; then
@@ -142,7 +143,7 @@ strongbash001(){
 	### crab_indent
 	cp -f "$F" /tmp/crab_syntax_check.$$
 	chmod 666 /tmp/crab_syntax_check.$$
-	crab_indent /tmp/crab_syntax_check.$$ "$syntax_style" &>/tmp/crab_indent_out.$$
+	crab_indent /tmp/crab_syntax_check.$$ "$SYNTAX_STYLE" &>/tmp/crab_indent_out.$$
 	if ! cmp /tmp/crab_syntax_check.$$ "$F"; then
 		cat /tmp/crab_indent_out.$$
 		echo_error 'strongbash001 Не выполнен crab_indent'
@@ -398,14 +399,14 @@ strongbash020(){
 	return 0
 }
 
-list_tmpvar1=$( grep -P '^\s*\w*="{0,1}/tmp/.*"{0,1}' "$F" \
+LIST_TMPVAR1=$( grep -P '^\s*\w*="{0,1}/tmp/.*"{0,1}' "$F" \
 	| sed -n 's/\(.*\W\|^\)\(\w*\)=.*/\2/p' || true )
 
-list_tmpvar2=$( grep -P '^\s*\w*=.*[(`]\s*mktemp.*' "$F" \
+LIST_TMPVAR2=$( grep -P '^\s*\w*=.*[(`]\s*mktemp.*' "$F" \
 	| sed -n 's/\(.*\W\|^\)\(\w*\)=.*/\2/p' || true )
 
-grep_list_tmpvar="$list_tmpvar1 $list_tmpvar2"
-grep_list_tmpvar="${grep_list_tmpvar//[ $'\n']/|}"
+GREP_LIST_TMPVAR="$LIST_TMPVAR1 $LIST_TMPVAR2"
+GREP_LIST_TMPVAR="${GREP_LIST_TMPVAR//[ $'\n']/|}"
 
 strongbash021_1(){
 	if grep -n -P 'trap.*rm.*tmp.*(EXIT|0).*' "$F"; then
@@ -415,7 +416,7 @@ strongbash021_1(){
 }
 
 strongbash021_2(){
-	if grep -n -P "trap.*rm.*($grep_list_tmpvar).*(EXIT|0).*" "$F"; then
+	if grep -n -P "trap.*rm.*($GREP_LIST_TMPVAR).*(EXIT|0).*" "$F"; then
 		echo_error "strongbash021_2 запрещено удалять tmp в trap EXIT"
 	fi
 	return 0
@@ -437,7 +438,7 @@ strongbash021_4(){
 	for func in $ALL_FUNCS; do
 		if grep -q "trap.*$func.*" "$F"; then
 			if grep -A 1000000 "$func" "$F" | grep -B100000 -m1 '^}' \
-				| grep -P -n ".*rm.*($grep_list_tmpvar).*"; then
+				| grep -P -n ".*rm.*($GREP_LIST_TMPVAR).*"; then
 				echo_error "strongbash021_4 запрещено удалять tmp в trap EXIT"
 			fi
 		fi
@@ -453,7 +454,7 @@ strongbash021_5(){
 }
 
 strongbash022_1(){
-	for var in $list_tmpvar1; do
+	for var in $LIST_TMPVAR1; do
 		if ! grep -qm1 -P "^([^#].*|)rm.*$var" "$F"; then
 			echo_error "strongbash022_1" \
 				"утилиты должны удалять за собой временные файлы rm -f \"\$$var\""\
@@ -463,7 +464,7 @@ strongbash022_1(){
 	return 0
 }
 strongbash022_2(){
-	for var in $list_tmpvar2; do
+	for var in $LIST_TMPVAR2; do
 		if ! grep -qm1 -P "^([^#].*|)rm.*$var" "$F"; then
 			echo_error "strongbash022_2" \
 				"утилиты должны удалять за собой временные файлы rm -f \"\$$var\""\
