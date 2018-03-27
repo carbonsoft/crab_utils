@@ -4,6 +4,24 @@ set -euEo pipefail
 
 echo "$0 $@ [$$] START" >&2
 
+# Magic check disabling
+if [ -f /etc/git_secure_salt ]; then
+	MAGIC_SALT=$(</etc/git_secure_salt)  # или сделать конфиг.
+else
+	MAGIC_SALT='salt'
+fi
+read -r MAGIC_FORCE_STR tmp_tail < <(echo "${MAGIC_SALT}$(date +%Y%m%d)" | md5sum)
+
+# echo "Hook params $*"
+# API git хуков подразумевает 3 параметра:
+if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
+	echo "Info: Утилита проверки новых и новых изменных файлов на syntax и тп"
+	echo "Usage: copy $0 to server git_hook dir"
+	echo "Example: ( cd git_dir && $0 refname old_commit new_commit; )"
+	echo "Today Hash: ${MAGIC_FORCE_STR}"
+	exit 1
+fi
+
 
 restore_filename() {
 	set -e
@@ -196,25 +214,6 @@ find_latest_old_commit() {
 
 
 myname=${0##*/}
-
-# Magic check disabling
-if [ -f /etc/git_secure_salt ]; then
-	MAGIC_SALT=$(</etc/git_secure_salt)  # или сделать конфиг.
-else
-	MAGIC_SALT='salt'
-fi
-read -r MAGIC_FORCE_STR tmp_tail < <(echo "${MAGIC_SALT}$(date +%Y%m%d)" | md5sum)
-
-
-# echo "Hook params $*"
-# API git хуков подразумевает 3 параметра:
-if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
-	echo "Info: Утилита проверки новых и новых изменных файлов на syntax и тп"
-	echo "Usage: copy $0 to server git_hook dir"
-	echo "Example: ( cd git_dir && $0 refname old_commit new_commit; )"
-	echo "Today Hash: ${MAGIC_FORCE_STR}"
-	exit 1
-fi
 
 ref=$1
 old_commit=$2
