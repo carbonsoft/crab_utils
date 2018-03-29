@@ -111,21 +111,21 @@ __init_dir(){
 	[ ! -d ".git" ] && git init
 	__git_config_set
 	if [ ! -s ".autogit" ]; then
-		echo "#
+		cat > .autogit <<EOF
 # dir ! exclude1 exclude2
 # Example:
 # etc ! etc/tmp1 etc/cache
 $( [ "$ARG_DIR" = "/" ] && echo '/etc/' || echo '.' )
-" > .autogit
+EOF
 	fi
 
 	if [ ! -f ".gitignore" ]; then
-		echo "#
+		cat > .gitignore <<EOF
 # plz edit .autogit
 *
 !.gitignore
 !.autogit
-" > .gitignore
+EOF
 	fi
 
 	git add .autogit .gitignore
