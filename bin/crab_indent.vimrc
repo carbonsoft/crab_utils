@@ -92,7 +92,7 @@ function GetShIndent0()
 		return curind
 	endif
 
-	if prevline =~ 'echo "' && prevline !~ 'echo ".*[^\\]"' && prevline !~ '^\s*#[ \t#]'
+	if prevline =~ 'echo "' && prevline !~ 'echo ""' && prevline !~ 'echo ".*[^\\]"' && prevline !~ '^\s*#[ \t#]'
 		let s:indent_echo1 = prevind
 		return curind
 	endif

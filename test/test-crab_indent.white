@@ -16,6 +16,28 @@ declare -a servers=(
 'http://127.0.0.1/cache/'
 )
 
+changelog1(){
+	echo ""
+	return 0
+}
+
+changelog2(){
+	echo "qaaa\"qqqq"
+	return 0
+}
+
+changelog3(){
+	echo ''
+	return 0
+}
+
+changelog4(){
+	echo 'qqq'
+	return 0
+}
+
+
+
 tmp1(){
 	echo 1
 	return 0
