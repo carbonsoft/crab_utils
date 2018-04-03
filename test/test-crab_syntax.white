@@ -9,6 +9,7 @@ echo "$0 $@ [$$] START" >&2
 ### strongbash002 Не установлен set -eu
 set -euEo pipefail
 
+### strongbash032 --help Info должно быть в начале файла
 ### strongbash019
 sys::usage "$@"
 ### --help Info: Проверяет скрипт на соглашение strongbash
@@ -220,6 +221,10 @@ echo 1
 echo yes
 echo yes
 
+### strongbash017 длина строки больше $MAX_CHARS используйте перенос
+echo '11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
+
+
 ### strongbash025 «do» и «then» НЕ делаем c новой строки
 if true; then
 	echo true
@@ -232,16 +237,6 @@ done
 ### strongbash026 Нельзя использовать голые скобки для assert и тп [ a = b ]
 [ 1 = 2 ] && { echo error1; exit 1; }
 
-
-
-### strongbash029 Если мы берем stdout от функции мы обязаны прописать
-### в первой строке set -e тк он снимается
-FAIL029(){
-	set -e
-	echo TRUE
-	return 0
-}
-ret=$( FAIL029 )
 
 
 ### strongbash024 1. Запрещено rm -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
@@ -294,6 +289,83 @@ cat > /tmp/tmptest <<EOF
 !/.gitignore
 !/etc
 EOF
+
+### strongbash029 Если мы берем stdout от функции мы обязаны прописать
+### в первой строке set -e тк он снимается
+FAIL029(){
+	set -e
+	echo TRUE
+	return 0
+}
+ret=$( FAIL029 )
+
+### strongbash030 нельзя вызывать функцию внутри if fname и fname&& и fname||
+FAIL030(){
+	set -e
+	echo TRUE
+	return 0
+}
+FAIL030_ret="$( FAIL030 )"
+[ "$FAIL030_ret" = 'TRUE' ] && echo TRUE
+ls && echo TRUE
+if ls; then
+	echo TRUE
+fi
+
+### strongbash031 strongbash031 нельзя использовать -EOF, используйте обычный EOF
+cat > /tmp/tmptest <<EOF
+/*
+!/.gitignore
+!/etc
+EOF
+
+### strongbash032 --help Info должно быть в начале файла
+
+### strongbash033_1 глобальная переменная $var должна быть в верхнем регистре
+GLOBALVAR1=123
+FAIL033_1(){
+	echo $GLOBALVAR1
+	return 0
+}
+
+### strongbash033_2 локальные переменные должны быть объявлены как local
+### или для внешних, как declare в начале файла
+declare $RR
+FAIL033_2(){
+	local mylocalvar=1
+	echo $mylocalvar
+	echo $RR
+	return 0
+}
+
+### strongbash033_3 переопределена глобальная переменная
+GLOBALVAR2=1234
+FAIL033_3(){
+	GLOBALVAR2=0
+	echo $GLOBALVAR2
+	return 0
+}
+
+### strongbash033_4 имя локальной переменной должно быть в нижнем регистре
+FAIL033_3(){
+	local lll=0
+	echo lll
+	return 0
+}
+
+### strongbash034_1 нельзя использовать | grep - q
+if cat | grep qq >/dev/null; then
+	echo ttt
+fi
+
+if grep -q /tmp/q >/dev/null; then
+	echo ttt
+fi
+
+### strongbash034_2 нельзя использовать | grep - m
+if cat | grep >/dev/null; then
+	echo ttt
+fi
 
 
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S

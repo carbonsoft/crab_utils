@@ -425,10 +425,35 @@ echo 1
 echo 1
 echo 1
 echo 1
-### bash 017 длина строки больше $MAX_CHARS используйте перенос \
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+
+### strongbash017 длина строки больше $MAX_CHARS используйте перенос \
 echo '111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
 
-### bash 018 поставьте пробел перед "text >"
+### strongbash018 поставьте пробел перед "text >"
 echo test> /tmp/r.$$
 
 ### strongbash016 Уберите конечные пробелы и tab
@@ -436,25 +461,6 @@ echo yes
 echo yes 
 
 
-
-### strongbash029 Если мы берем stdout от функции мы обязаны прописать
-### в первой строке set -e тк он снимается
-FAIL029(){
-	echo TRUE
-	return 0
-}
-ret=$( FAIL029 )
-
-### strongbash030 нельзя вызывать функцию внутри if fname и fname&& и fname||
-FAIL030(){
-	echo TRUE
-	return 0
-}
-FAIL030 && echo TRUE
-FAIL030 || echo TRUE
-if FAIL030; then
-	echo TRUE
-fi
 
 ### strongbash025 «do» и «then» НЕ делаем c новой строки
 if true;
@@ -519,7 +525,7 @@ trap 'rm -f /tmp/eee' EXIT
 trap 'rm -f /tmp/eee' 1 2 0 4
 
 ### strongbash021_2 Запрещено удалять tmp в trap EXIT.
-tf=/tmp/rrr1
+TF=/tmp/rrr1
 trap "rm -f $tf" EXIT
 
 ### strongbash021_3 Запрещено удалять tmp в trap EXIT.
@@ -531,7 +537,7 @@ __exit1(){
 ### strongbash021_4 Запрещено удалять tmp в trap EXIT.
 trap "__exit2" EXIT
 __exit2(){
-	rm -f "$tf"
+	rm -f "$TF"
 }
 
 ### strongbash021_5 Не рекомендуется использовать trap EXIT.
@@ -555,12 +561,26 @@ cmd1 || ttt && qqq
 ### лучше проверять окружение и вызвать сразу нужное If centos if ubintu if dir
 cmd1 || cmd2 || cmd3
 
+### strongbash029 Если мы берем stdout от функции мы обязаны прописать
+### в первой строке set -e тк он снимается
+FAIL029(){
+	echo TRUE
+	return 0
+}
+ret=$( FAIL029 )
 
-### strongbash031 todo
-### все локальные переменные должны быть объявлены через local и быть малыми буквами
-### все глобальные переменные используемые внутри функций должны быть большими буквами
+### strongbash030 нельзя вызывать функцию внутри if fname и fname&& и fname||
+FAIL030(){
+	echo TRUE
+	return 0
+}
+FAIL030 && echo TRUE
+FAIL030 || echo TRUE
+if FAIL030; then
+	echo TRUE
+fi
 
-### strongbash031
+### strongbash031 strongbash031 нельзя использовать -EOF, используйте обычный EOF
 cat > /tmp/tmptest <<-EOF
 	/*
 	!/.gitignore
@@ -568,7 +588,78 @@ cat > /tmp/tmptest <<-EOF
 	EOF
 
 ### strongbash032
-### --help Info: Проверяет скрипт на соглашение strongbash032
+# Info: Проверяет скрипт на соглашение strongbash032
+
+### strongbash033_1 глобальная переменная $var должна быть в верхнем регистре
+globalvar1=123
+FAIL033_1(){
+	echo $globalvar1
+}
+
+### strongbash033_2 локальные переменные должны быть объявлены как local
+### или для внешних, как declare в начале файла
+FAIL033_2(){
+	echo $mylocalvar
+}
+
+### strongbash033_3 переопределена глобальная переменная
+GLOBALVAR2=1234
+FAIL033_3(){
+	local GLOBALVAR2=0
+	echo $GLOBALVAR2
+}
+
+### strongbash033_4 имя локальной переменной должно быть в нижнем регистре
+FAIL033_3(){
+        local LOCALVAR2=0
+        echo $LOCALVAR2
+}
+
+### strongbash034_1 нельзя использовать | grep -q
+if cat | grep -q; then
+	echo ttt
+fi
+
+### strongbash034_2 нельзя использовать | grep -m
+if cat | grep -m1; then
+	echo ttt
+fi
+
+
+### strongbash033_1 глобальная переменная $var должна быть в верхнем регистре
+globalvar1=123
+FAIL033_1(){
+	echo $globalvar1
+}
+
+### strongbash033_2 локальные переменные должны быть объявлены как local
+### или для внешних, как declare в начале файла
+FAIL033_2(){
+	echo $mylocalvar
+}
+
+### strongbash033_3 переопределена глобальная переменная
+GLOBALVAR2=1234
+FAIL033_3(){
+	local GLOBALVAR2=0
+	echo $GLOBALVAR2
+}
+
+### strongbash033_4 имя локальной переменной должно быть в нижнем регистре
+FAIL033_3(){
+        local LOCALVAR2=0
+        echo $LOCALVAR2
+}
+
+### strongbash034_1 нельзя использовать | grep -q
+if cat | grep -q; then
+	echo ttt
+fi
+
+### strongbash034_2 нельзя использовать | grep -m
+if cat | grep -m1; then
+	echo ttt
+fi
 
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 echo S#U#C#C#E#S#S

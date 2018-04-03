@@ -61,8 +61,8 @@ error_msg=""
 
 ALL_FUNCS=$( cat "$F" \
 	| grep '^.*()' \
+	| sed 's/^function //' \
 	| sed -n  's/^\(\S*\)().*{/\1/p' ) || true # '
-
 
 declare -A F_LOCAL_VARS
 declare -A F_UNKNOWN_VARS
@@ -118,7 +118,8 @@ parse_variables(){
 		[[ "$line" == "#"* ]] && continue
 		[[ "${line//[$__SPACE]/}" == "'"* ]] && continue
 		if [[ "$line" == *[a-z0-9:_]'()'*'{' ]]; then
-			cur_fname="${line//[ {()]/}"
+			cur_fname="${line/function /}"
+			cur_fname="${cur_fname//[ {()]/}"
 			[[ " $FUNCT_LIST " == *" $cur_fname "* ]] && continue
 			FUNCT_LIST="$FUNCT_LIST $cur_fname"
 			F_LOCAL_VARS[$cur_fname]=''
@@ -215,11 +216,10 @@ strongbash001(){
 }
 
 strongbash002(){
-	if ! head -n 10 "$F" | egrep '^(# )?set -euEo pipefail' >/dev/null \
+	if ! head -n 10 "$F" | egrep '^(# )?set -eu' >/dev/null \
 		&& ! grep -q '::carbon.sys' "$F"; then
 		echo_error\
-			'strongbash002 Не установлен set -euEo pipefail '\
-			'как работать с pipefail: a|b|c|d || true '
+			'strongbash002 Не установлен set -eu'
 	fi
 	return 0
 }
@@ -600,14 +600,21 @@ strongbash028(){
 	return 0
 }
 
+(
+qweq
+) | qweqweq233
+
 strongbash029(){
 	local fname
-	for fname in $ALL_FUNCS; do
-		if egrep -q ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$F" \
-			&& ! egrep -A 1 "^$fname\(\).*\{" "$F" | grep 'set -e' >/dev/null; then
-			egrep -n ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$F"
-			echo_error "strongbash029 добавьте set -e в первую строку функции $fname ,"\
-				"которая используется в конструкции \$( $fname )"
+	for fname in $FUNCT_LIST; do
+		if grep -nP '.*(\$\(*|`)[ ]*'"$fname[^a-zA-Z0-9_]" "$F" \
+			&& ! echo "${F_BODY[$fname]}" | head -n 4 | grep 'set -e' ; then
+			echo $?
+			echo_error "strongbash029 установите set -e в функции $fname"\
+				"тк она используется в subshell"
+			grep -nP '.*(\$\(*|`)[ ]*'"$fname[^a-zA-Z0-9_]" "$F"
+			echo "${F_BODY[$fname]}"
+			echo hh
 		fi
 	done
 	return 0
@@ -715,9 +722,9 @@ strongbash033_4(){
 }
 
 
-strongbash034(){
-	if grep -nP '^.*[^|]\|[ ]*grep [^;|&]*(-q|-m)(?!.*\|\|[ ]*true.*).*$' "$F"; then
-		echo_error "strongbash034 нельзя использовать grep -q или grep -m с pipe"\
+strongbash034_1(){
+	if grep -nP '^.*[^|]\|[ ]*grep [^;|&]*-q(?!.*\|\|[ ]*true.*).*$' "$F"; then
+		echo_error "strongbash034_1 нельзя использовать grep -q или grep -m с pipe"\
 			"так как это приведет к разрыву pipe и ошибке"\
 			"-q можно заменить на >/dev/null"\
 			"к -m нужно добавить || true"
@@ -725,16 +732,13 @@ strongbash034(){
 	return 0
 }
 
-strongbash035(){
-	local fname
-	for fname in $FUNCT_LIST; do
-		if grep -nP '.*(\$\(*|`)[ ]*'"$fname" "$F" >/dev/null \
-			&& ! echo "${F_BODY[$fname]}" | head -n 4 | grep 'set -e' >/dev/null ; then
-			echo_error "strongbash035 установите set -e в функции $fname"\
-				"тк она используется в subshell"
-			grep -nP '.*(\$\(*|`)[ ]*'"$fname" "$F"
-		fi
-	done
+strongbash034_2(){
+	if grep -nP '^.*[^|]\|[ ]*grep [^;|&]*-m(?!.*\|\|[ ]*true.*).*$' "$F"; then
+		echo_error "strongbash034_2 нельзя использовать grep -q или grep -m с pipe"\
+			"так как это приведет к разрыву pipe и ошибке"\
+			"-q можно заменить на >/dev/null"\
+			"к -m нужно добавить || true"
+	fi
 	return 0
 }
 
@@ -747,7 +751,7 @@ if [ $maybe == 1 ]; then
 	strongbash017
 else
 	for check in $( typeset -F | grep strongbash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
-		if [[ "${0##*/}" == "crab_syntax" ]]; then
+		if [[ "${F##*/}" == "crab_syntax" ]]; then
 			[[ " $self_skip " == *" $check "* ]] && continue
 		fi
 		# echo $check # time $check

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euEo pipefail
+set -euE
 echo "$0 $@ [$$] START" >&2
 
 usage(){
