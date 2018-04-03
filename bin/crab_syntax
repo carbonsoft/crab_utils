@@ -30,7 +30,7 @@ if [ -d "$1" ]; then
 	DIR="$1"
 	failed=FALSE
 	while read -r f; do
-		if ! head -n1 "$f" | grep '#!/bin/bash' >/dev/null; then
+		if ! head -n1 "$f" | grep -q '#!/bin/bash'; then
 			continue
 		fi
 		if ! /opt/crab/crab_utils/bin/crab_syntax "$f"; then
@@ -85,7 +85,7 @@ __is_local_var(){
 	set -e
 	local var_name=$1
 	local fname=$2
-	if  echo "${F_BODY[$fname]}" | grep -P "local.* $var_name([^a-zA-Z0-9_]|$)" >/dev/null ; then
+	if  echo "${F_BODY[$fname]}" | grep -qP "local.* $var_name([^a-zA-Z0-9_]|$)" ; then
 		echo TRUE
 	else
 		echo FALSE
@@ -150,9 +150,9 @@ parse_variables(){
 		[ "$cur_fname" != "" ] && continue
 		[[ "$line" != *[a-z0-9_]=[^=]* && "$line" != *declare* ]] && continue
 		if ! echo "$line" \
-			| grep -P '^(;|&|\||)[ |\t]*[a-zA-Z0-9_]*=[^=]*' >/dev/null \
+			| grep -qP '^(;|&|\||)[ |\t]*[a-zA-Z0-9_]*=[^=]*' \
 			&&  ! echo "$line" \
-			| grep -P '^(declare -A|declare)[ |\t]*[a-zA-Z0-9_]*' >/dev/null; then
+			| grep -qP '^(declare -A|declare)[ |\t]*[a-zA-Z0-9_]*'; then
 			continue
 		fi
 		var_name="${line%%=*}"
@@ -216,7 +216,7 @@ strongbash001(){
 }
 
 strongbash002(){
-	if ! head -n 10 "$F" | egrep '^(# )?set -eu' >/dev/null \
+	if ! head -n 10 "$F" | egrep -q '^(# )?set -eu' \
 		&& ! grep -q '::carbon.sys' "$F"; then
 		echo_error\
 			'strongbash002 Не установлен set -eu'
@@ -249,7 +249,7 @@ strongbash005(){
 }
 
 strongbash006(){
-	if ! tail -n 2 "$F" | head -n 1 | grep '$0 $@ \[$$\] SUCCESS' >/dev/null \
+	if ! tail -n 2 "$F" | head -n 1 | grep -q '$0 $@ \[$$\] SUCCESS' \
 		|| ! grep -q '$0 $@ \[$$\] START' "$F" ; then
 		grep -q '::carbon.sys' "$F" && return 0
 		echo_error 'strongbash006 В начале каждого файла должен быть:
@@ -274,7 +274,7 @@ strongbash006(){
 }
 
 strongbash007(){
-	if ! tail -n 1 "$F" | grep 'exit 0' >/dev/null; then
+	if ! tail -n 1 "$F" | grep -q 'exit 0'; then
 		echo_error 'strongbash007 В конце каждого файла должен быть:
 		exit 0
 		или для библиотек:
@@ -285,7 +285,7 @@ strongbash007(){
 }
 
 strongbash008(){
-	head -n 1 "$F" | grep '#!/bin/bash' >/dev/null \
+	head -n 1 "$F" | grep -q '#!/bin/bash' \
 		|| echo_error 'strongbash008 Обязательно использовать #!/bin/bash даже в include'
 	return 0
 }
@@ -304,7 +304,7 @@ strongbash010(){
 		'лучше локальные local tt=/tmp/binname_tmpcat.$$' \
 		'или глобальный каталог mkdir -p $TMPDIR $TMPDIR/testfile.txt'
 	if egrep -q '^[^#]*rm.*/tmp/.*' "$F" && \
-		! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep '$$' >/dev/null; then
+		! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep -q '$$'; then
 		egrep -n 'rm.*/tmp/.*' "$F"
 		echo_error 'strongbash011 Нельзя использовать временные файлы без $$, '\
 			'лучше rm -f /tmp/binname_tmpcat.$$'
@@ -600,21 +600,15 @@ strongbash028(){
 	return 0
 }
 
-(
-qweq
-) | qweqweq233
-
 strongbash029(){
 	local fname
 	for fname in $FUNCT_LIST; do
-		if grep -nP '.*(\$\(*|`)[ ]*'"$fname[^a-zA-Z0-9_]" "$F" \
-			&& ! echo "${F_BODY[$fname]}" | head -n 4 | grep 'set -e' ; then
-			echo $?
+		if grep -qnP '.*(\$\(*|`)[ ]*'"$fname[^a-zA-Z0-9_]" "$F" \
+			&& ! echo "${F_BODY[$fname]}" | head -n 4 | grep -q 'set -e' ; then
 			echo_error "strongbash029 установите set -e в функции $fname"\
 				"тк она используется в subshell"
 			grep -nP '.*(\$\(*|`)[ ]*'"$fname[^a-zA-Z0-9_]" "$F"
 			echo "${F_BODY[$fname]}"
-			echo hh
 		fi
 	done
 	return 0
@@ -658,7 +652,7 @@ strongbash031(){
 }
 
 strongbash032(){
-	if ! head -40 "$F" | grep "Info:" >/dev/null; then
+	if ! head -40 "$F" | grep -q "Info:"; then
 		echo_error "strongbash032 описание скрипта должно быть в начале файла "\
 			"(help или usage должен располагаться в начале файла)"
 	fi
@@ -723,6 +717,7 @@ strongbash033_4(){
 
 
 strongbash034_1(){
+	return 0
 	if grep -nP '^.*[^|]\|[ ]*grep [^;|&]*-q(?!.*\|\|[ ]*true.*).*$' "$F"; then
 		echo_error "strongbash034_1 нельзя использовать grep -q или grep -m с pipe"\
 			"так как это приведет к разрыву pipe и ошибке"\
@@ -733,6 +728,7 @@ strongbash034_1(){
 }
 
 strongbash034_2(){
+	return 0
 	if grep -nP '^.*[^|]\|[ ]*grep [^;|&]*-m(?!.*\|\|[ ]*true.*).*$' "$F"; then
 		echo_error "strongbash034_2 нельзя использовать grep -q или grep -m с pipe"\
 			"так как это приведет к разрыву pipe и ошибке"\
