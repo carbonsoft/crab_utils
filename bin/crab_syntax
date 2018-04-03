@@ -30,7 +30,7 @@ if [ -d "$1" ]; then
 	DIR="$1"
 	failed=FALSE
 	while read -r f; do
-		if ! head -n1 "$f" | grep -qm1 '#!/bin/bash'; then
+		if ! head -n1 "$f" | grep '#!/bin/bash' >/dev/null; then
 			continue
 		fi
 		if ! /opt/crab/crab_utils/bin/crab_syntax "$f"; then
@@ -49,6 +49,7 @@ fi
 __SPACE=$' \t'
 __EMPTY=''
 F=$1
+[ ! -f "$F" ] && { echo "Error file $F not found"; exit 1; }
 
 if grep '^[#$__SPACE]* skip crab_syntax' "$F"; then
 	echo SKIP
@@ -67,70 +68,130 @@ declare -A F_LOCAL_VARS
 declare -A F_UNKNOWN_VARS
 GLOBAL_VAR_LIST=''
 FUNCT_LIST=''
-__parse_variables(){
-	local var_name=''
-	local cur_fname=''
-	local line=''
-	local is_local_declare=''
+declare -A F_BODY
+
+func_fill_body(){
+	local fname
+	for fname in $ALL_FUNCS; do
+		F_BODY[$fname]=$( grep -A 1000000 "^${fname}()[ ]*{" "$F" \
+			| grep -B100000 -m1 '^}' || true )
+		# "
+	done
+	return 0
+}
+func_fill_body
+
+__is_local_var(){
+	set -e
+	local var_name=$1
+	local fname=$2
+	if  echo "${F_BODY[$fname]}" | grep -P "local.* $var_name([^a-zA-Z0-9_]|$)" >/dev/null ; then
+		echo TRUE
+	else
+		echo FALSE
+	fi
+	return 0
+}
+__add_var(){
+	local var_name=$1 cur_fname=$2 __is_local_var_ret=
+	if [ "$cur_fname" = "" ]; then
+		[[ " $GLOBAL_VAR_LIST " == *" $var_name "* ]] && continue
+		GLOBAL_VAR_LIST="$GLOBAL_VAR_LIST $var_name"
+		continue
+	fi
+	# Проверяем, что переменная уже сохранена
+	[[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
+	[[ " ${F_UNKNOWN_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
+	__is_local_var_ret=$( __is_local_var $var_name $cur_fname )
+	if [ "${__is_local_var_ret}" = TRUE ]; then
+		F_LOCAL_VARS[$cur_fname]="${F_LOCAL_VARS[$cur_fname]:-} $var_name"
+	else
+		F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]:-} $var_name"
+	fi
+	return 0
+}
+parse_variables(){
+	local var_name= cur_fname= line= is_local_declare=
+	local var= __is_local_var_ret= vars=
 
 	while IFS='' read -r line; do
-		[[ "$line" = "#"* ]] && continue
+		[[ "$line" == "#"* ]] && continue
+		[[ "${line//[$__SPACE]/}" == "'"* ]] && continue
 		if [[ "$line" == *[a-z0-9:_]'()'*'{' ]]; then
 			cur_fname="${line//[ {()]/}"
 			[[ " $FUNCT_LIST " == *" $cur_fname "* ]] && continue
 			FUNCT_LIST="$FUNCT_LIST $cur_fname"
+			F_LOCAL_VARS[$cur_fname]=''
+			F_UNKNOWN_VARS[$cur_fname]=''
 			continue
 		fi
 		if [[ "$line" == '}' ]]; then
 			cur_fname=""
 			continue
 		fi
-
-		# определяем использование переменных
-		while read -r var_name; do
-			# работаем только внутри функций
-			[ "$cur_fname" == "" ] && continue
-			# Проверяем, что переменная уже сохранена
-			[[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
-			[[ " ${F_UNKNOWN_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
-
-			F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]:-} $var_name"
-
-		done < <(echo "$line" | tr '$' '\n' | tail -n +2 \
-			| sed -n 's/^{*\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p')
-
-		# определяем определение переменных
-		[[ "$line" != *[a-z0-9_]=[^=]* ]] && continue
-		[[ "$line" == *[a-z0-9_]=[^=]*[\ ][\;]* ]] && continue
+		# }
+		# определяем использование переменных echo $var
+		# оптимизация
+		if [[ "$line" == *"\$"[a-zA-Z]* ]] || [[ "$line" == *"\${"[a-zA-Z]* ]]; then
+			vars="${line//[{]/}"
+			vars="${vars//[^a-zA-Z0-9_$]/:}"
+			vars="${vars//$/ }"
+			vars="${vars#* }"
+			for var_name in $vars; do
+				var_name="${var_name%%:*}"
+				[ "$var_name" = '' ] && continue
+				[[ "$var_name" == [@*0-9]* ]] && continue
+				__add_var "$var_name" "$cur_fname"
+			done
+		fi
+		# определяем определение переменных var=123 только для глобальных
+		# так меньше ложных сработок
+		[ "$cur_fname" != "" ] && continue
+		[[ "$line" != *[a-z0-9_]=[^=]* && "$line" != *declare* ]] && continue
+		if ! echo "$line" \
+			| grep -P '^(;|&|\||)[ |\t]*[a-zA-Z0-9_]*=[^=]*' >/dev/null \
+			&&  ! echo "$line" \
+			| grep -P '^(declare -A|declare)[ |\t]*[a-zA-Z0-9_]*' >/dev/null; then
+			continue
+		fi
 		var_name="${line%%=*}"
 		[[ "$var_name" = *[\"\']* ]] && continue
-		[[ "$var_name" = *"local "* ]] && is_local_declare=TRUE || is_local_declare=FALSE
 		var_name="${var_name##* }"
 		var_name="${var_name##*$'\t'}"
 		[ "$var_name" = "" ] && continue
 		[[ " LANG IFS " == *" $var_name "* ]] && continue
 
-
-		if [ $is_local_declare = TRUE ]; then
-			[[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
-			F_LOCAL_VARS[$cur_fname]="${F_LOCAL_VARS[$cur_fname]:-} $var_name"
-			continue
-		fi
-		if [ "$cur_fname" != "" ]; then
-			[[ " ${F_UNKNOWN_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
-			F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]:-} $var_name"
-			continue
-		fi
 		if [ "$cur_fname" = "" ]; then
 			[[ " $GLOBAL_VAR_LIST " == *" $var_name "* ]] && continue
 			GLOBAL_VAR_LIST="$GLOBAL_VAR_LIST $var_name"
 			continue
 		fi
+		continue
+
+		# [[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
+		# [[ " ${F_UNKNOWN_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
+		# __is_local_var_ret=$( __is_local_var $var_name $cur_fname )
+		# if [ "${__is_local_var_ret}" = TRUE ]; then
+		#	F_LOCAL_VARS[$cur_fname]="${F_LOCAL_VARS[$cur_fname]:-} $var_name"
+		# else
+		#	F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]:-} $var_name"
+		# fi
 	done < "$F"
 	return 0
 }
+parse_variables
 
-__parse_variables
+func_var_print(){
+	local fname
+	echo "GLOBAL_VAR_LIST=$GLOBAL_VAR_LIST"
+	echo "FUNCT_LIST=$FUNCT_LIST"
+	for fname in $FUNCT_LIST; do
+		echo func="${fname}: unk ${F_UNKNOWN_VARS[$fname]:-}"
+		echo func="${fname}: loc ${F_LOCAL_VARS[$fname]:-}"
+	done
+	return 0
+}
+# func_var_print; exit
 
 echo_error(){
 	ERROR=$((ERROR+1))
@@ -154,8 +215,8 @@ strongbash001(){
 }
 
 strongbash002(){
-	if ! head -n 10 "$F" | egrep -qm1 '^(# )?set -euEo pipefail' \
-		&& ! grep -qm1 '::carbon.sys' "$F"; then
+	if ! head -n 10 "$F" | egrep '^(# )?set -euEo pipefail' >/dev/null \
+		&& ! grep -q '::carbon.sys' "$F"; then
 		echo_error\
 			'strongbash002 Не установлен set -euEo pipefail '\
 			'как работать с pipefail: a|b|c|d || true '
@@ -177,6 +238,7 @@ strongbash004(){
 
 strongbash005(){
 	### todo обрабатывать отдельно каждую функцию
+	local count_func count_end_return
 	count_func=$( grep '()[ ]*{' "$F" | wc -l || true ) # '
 	count_end_return=$( grep 'return\|exit' -A 1 "$F" | grep '^}' | wc -l || true )
 	[ $count_func != $count_end_return ] \
@@ -187,9 +249,9 @@ strongbash005(){
 }
 
 strongbash006(){
-	if ! tail -n 2 "$F" | head -n 1 | grep -q '$0 $@ \[$$\] SUCCESS'\
-		|| ! grep -q '$0 $@ \[$$\] START' "$F"; then
-		grep -qm1 '::carbon.sys' "$F" && return 0
+	if ! tail -n 2 "$F" | head -n 1 | grep '$0 $@ \[$$\] SUCCESS' >/dev/null \
+		|| ! grep -q '$0 $@ \[$$\] START' "$F" ; then
+		grep -q '::carbon.sys' "$F" && return 0
 		echo_error 'strongbash006 В начале каждого файла должен быть:
 		echo "$0 $@ [$$] START" >&2
 		BODY
@@ -212,7 +274,7 @@ strongbash006(){
 }
 
 strongbash007(){
-	if ! tail -n 1 "$F" | grep -q 'exit 0'; then
+	if ! tail -n 1 "$F" | grep 'exit 0' >/dev/null; then
 		echo_error 'strongbash007 В конце каждого файла должен быть:
 		exit 0
 		или для библиотек:
@@ -223,7 +285,7 @@ strongbash007(){
 }
 
 strongbash008(){
-	head -n 1 "$F" | grep -qm1 '#!/bin/bash' \
+	head -n 1 "$F" | grep '#!/bin/bash' >/dev/null \
 		|| echo_error 'strongbash008 Обязательно использовать #!/bin/bash даже в include'
 	return 0
 }
@@ -242,7 +304,7 @@ strongbash010(){
 		'лучше локальные local tt=/tmp/binname_tmpcat.$$' \
 		'или глобальный каталог mkdir -p $TMPDIR $TMPDIR/testfile.txt'
 	if egrep -q '^[^#]*rm.*/tmp/.*' "$F" && \
-		! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep -qm1 '$$'; then
+		! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep '$$' >/dev/null; then
 		egrep -n 'rm.*/tmp/.*' "$F"
 		echo_error 'strongbash011 Нельзя использовать временные файлы без $$, '\
 			'лучше rm -f /tmp/binname_tmpcat.$$'
@@ -250,24 +312,23 @@ strongbash010(){
 	return 0
 }
 
+INDENT_MAX=0
+INDENT_MAX_LNUM=0
 strongbash011(){
-	indent_max=0
-	indent_max_lnum=0
-	local l=0
+	local l=0 line= indent=
+	cat "$F" | sed 's/        /\t/' \
+		| sed 's/\t/        /g' \
+		| sed -n 's/^\([ ]\{1,\}\)\([^ ].*\)$/\1/p' > "/tmp/crab_syntax.indent.$$"
 	while IFS='' read -r line; do
 		l=$((l+1))
-		indent=$( echo "$line" | sed 's/        /\t/' \
-			| sed 's/\t/        /g' \
-			| sed -n 's/^\([ ]\{1,\}\)\([^ ].*\)$/\1/p' \
-			| wc -m || true ) # '
-		indent=$((indent/8))
-		(( $indent > $indent_max )) && { indent_max="$indent"; indent_max_lnum=$l; }
-	done < "$F"
-
-	if (( $indent_max > 5 )); then
-		grep -n . "$F" | grep "^$indent_max_lnum:"
+		indent=$((${#line}/8))
+		(( $indent > $INDENT_MAX )) && { INDENT_MAX="$indent"; INDENT_MAX_LNUM=$l; }
+	done < "/tmp/crab_syntax.indent.$$"
+	rm -f "/tmp/crab_syntax.indent.$$"
+	if (( $INDENT_MAX > 5 )); then
+		grep -n . "$F" | grep "^$INDENT_MAX_LNUM:"
 		echo_error \
-			"strongbash011 слишком большая глубина(indent=$indent_max), "\
+			"strongbash011 слишком большая глубина(indent=$INDENT_MAX), "\
 			"используйте ранний return или сделайте подфункции"
 	fi
 	return 0
@@ -291,43 +352,23 @@ strongbash013(){
 
 MAX_FSIZE=64
 strongbash014(){
-	local n=0
-	local fstart=0
-	local fsize=0
-	local fsize_error=FALSE
-	local fstart_line=''
-	while IFS='' read -r line; do
-		n=$((n+1))
-		if [[ "$line" == *'()'*'{' ]]; then
-			fstart=$n
-			fstart_line=$line
+	local fname fsize
+	for fname in $FUNCT_LIST; do
+		fsize="$( echo "${F_BODY[$fname]}" | grep -v "^[$__SPACE]*#.*" | wc -l || true )"
+		if (( $fsize > $MAX_FSIZE )); then
+			echo_error \
+				"strongbash014 Слишком большая функция $fname $fsize"\
+				"больше $MAX_FSIZE строк, "\
+				"выделите подфункции __fname"
+
 		fi
-		if [[ "$line" == '{' ]]; then
-			fstart=$n
-			fstart_line=$line
-		fi
-		if (( $fstart > 0 )); then
-			echo "$line" | grep -qm1 "^[$__SPACE]*#.*" && continue
-			fsize=$(( fsize+1 ))
-			if [[ "$line" == '}'* ]]; then
-				if (( $fsize > $MAX_FSIZE )); then
-					echo "$fstart: fsize=$fsize $fstart_line"
-					fsize_error=TRUE
-				fi
-				fstart=0
-				fstart_line=
-				fsize=0
-			fi
-		fi
-	done < "$F"
-	[ $fsize_error = TRUE ] \
-		&& echo_error \
-		"strongbash014 Слишком большая функция больше $MAX_FSIZE строк, "\
-		"выделите подфункции __fname"
+
+	done
 	return 0
 }
 
 strongbash015(){
+	local fcount avg_size
 	fsize=$(cat "$F" | wc -l )
 	fcomm_size=$( grep "^[$__SPACE]*#.*" "$F" | wc -l || true )
 	fcount=$( grep '()[ ]*{*' "$F" | wc -l || true ) # ' #}
@@ -350,9 +391,9 @@ strongbash016(){
 
 MAX_CHARS=100
 strongbash017(){
+	local line=
 	while IFS='' read -r line; do
-		chars_count=$( echo "$line" | wc -m  || true )
-		if [ $chars_count -gt $MAX_CHARS ]; then
+		if [ "${#line}" -gt $MAX_CHARS ]; then
 			echo "$line"
 			echo_error \
 				"strongbash017 длина строки больше $MAX_CHARS используйте перенос \\ "\
@@ -369,9 +410,9 @@ strongbash018(){
 }
 
 strongbash019(){
-	if ! grep -qm1 "Info:"  "$F" \
-		|| ! grep -qm1 "Usage:"  "$F" \
-		|| ! grep -qm1 "Example:"  "$F"; then
+	if ! grep -q "Info:"  "$F" \
+		|| ! grep -q "Usage:"  "$F" \
+		|| ! grep -q "Example:"  "$F"; then
 		echo_error \
 "strongbash019
 Добавьте обязательно:
@@ -388,10 +429,10 @@ echo Example: ${F##/*} --verbose -z 9 myfile1.txt example.com
 }
 
 strongbash020(){
+	local func
 	for func in $ALL_FUNCS; do
 		if [[ "${func^^}" == *LOG* ]]; then
-			if grep -A 1000000 "$func" "$F" | grep -B100000 -m1 '^}' \
-				| grep -n 'date'; then
+			if echo "${F_BODY[$func]}" | grep -n 'date'; then
 				echo_error "strongbash020 Запрещены функции Log в утилитах"
 			fi
 		fi
@@ -423,10 +464,10 @@ strongbash021_2(){
 }
 
 strongbash021_3(){
+	local func
 	for func in $ALL_FUNCS; do
 		if grep -q "trap.*$func.*" "$F"; then
-			if grep -A 1000000 "$func" "$F" | grep -B100000 -m1 '^}' \
-				| grep -n '.*rm.*tmp'; then
+			if echo "${F_BODY[$func]}" | grep -n '.*rm.*tmp'; then
 				echo_error "strongbash021_3 запрещено удалять tmp в trap EXIT"
 			fi
 		fi
@@ -435,9 +476,10 @@ strongbash021_3(){
 }
 
 strongbash021_4(){
+	local func
 	for func in $ALL_FUNCS; do
 		if grep -q "trap.*$func.*" "$F"; then
-			if grep -A 1000000 "$func" "$F" | grep -B100000 -m1 '^}' \
+			if echo "${F_BODY[$func]}" \
 				| grep -P -n ".*rm.*($GREP_LIST_TMPVAR).*"; then
 				echo_error "strongbash021_4 запрещено удалять tmp в trap EXIT"
 			fi
@@ -454,8 +496,9 @@ strongbash021_5(){
 }
 
 strongbash022_1(){
+	local var
 	for var in $LIST_TMPVAR1; do
-		if ! grep -qm1 -P "^([^#].*|)rm.*$var" "$F"; then
+		if ! grep -q -P "^([^#].*|)rm.*$var" "$F"; then
 			echo_error "strongbash022_1" \
 				"утилиты должны удалять за собой временные файлы rm -f \"\$$var\""\
 				"или работать c постоянными файлами в /var/"
@@ -464,8 +507,9 @@ strongbash022_1(){
 	return 0
 }
 strongbash022_2(){
+	local var
 	for var in $LIST_TMPVAR2; do
-		if ! grep -qm1 -P "^([^#].*|)rm.*$var" "$F"; then
+		if ! grep -q -P "^([^#].*|)rm.*$var" "$F"; then
 			echo_error "strongbash022_2" \
 				"утилиты должны удалять за собой временные файлы rm -f \"\$$var\""\
 				"или работать c постоянными файлами в /var/"
@@ -536,7 +580,7 @@ strongbash026(){
 }
 
 strongbash027(){
-	if grep -P -n '^(?!(.*if|[^\|]*&&))[^#].*\S+\s*\|\|(?!.*true).*' "$F"; then
+	if grep -P -n '^(?!(.*if|[^\|]*&&))[^#].*\S+\s*\|\|[ ](?!.*true).*' "$F"; then
 		echo_error \
 "strongbash027 нельзя использовать конструкции вида [ a = b ] |$__EMPTY| cmd1
 и cmd1 |$__EMPTY| cmd2
@@ -557,9 +601,10 @@ strongbash028(){
 }
 
 strongbash029(){
+	local fname
 	for fname in $ALL_FUNCS; do
-		if egrep -qm1 ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$F" \
-			&& ! egrep -A 1 "^$fname\(\).*\{" "$F" | grep -qm1 'set -e'; then
+		if egrep -q ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$F" \
+			&& ! egrep -A 1 "^$fname\(\).*\{" "$F" | grep 'set -e' >/dev/null; then
 			egrep -n ".*\\$\([ ]*$fname([ ].*|[ ]*)\).*" "$F"
 			echo_error "strongbash029 добавьте set -e в первую строку функции $fname ,"\
 				"которая используется в конструкции \$( $fname )"
@@ -569,6 +614,7 @@ strongbash029(){
 }
 
 strongbash030_1(){
+	local fname
 	for fname in $ALL_FUNCS; do
 		if egrep -n "(^|.*\W)$fname[ ]*&&.*" "$F" ; then
 			echo_error "strongbash030_1 нельзя использовать $fname && cmd1"
@@ -578,6 +624,7 @@ strongbash030_1(){
 }
 
 strongbash030_2(){
+	local fname
 	for fname in $ALL_FUNCS; do
 		if egrep -n "(^|.*\W)$fname[ ]*\|\|.*" "$F" ; then
 			echo_error "strongbash030_2 нельзя использовать $fname |$__EMPTY| cmd1"
@@ -587,6 +634,7 @@ strongbash030_2(){
 }
 
 strongbash030_3(){
+	local fname
 	for fname in $ALL_FUNCS; do
 		if egrep -n ".*if.*\s$fname\W+.*" "$F" ; then
 			echo_error "strongbash030_3 нельзя использовать if $fname; then"
@@ -603,33 +651,89 @@ strongbash031(){
 }
 
 strongbash032(){
-	if ! head -40 "$F" | grep -qm1 "Info:"; then
+	if ! head -40 "$F" | grep "Info:" >/dev/null; then
 		echo_error "strongbash032 описание скрипта должно быть в начале файла "\
 			"(help или usage должен располагаться в начале файла)"
 	fi
 	return 0
 }
 
-strongbash033(){
+
+strongbash033_1(){
+	local fname var
 	for fname in $FUNCT_LIST; do
 		for var in ${F_UNKNOWN_VARS[$fname]:-}; do
-			if [[ "$GLOBAL_VAR_LIST" == *" $var "* ]] && [ "$var" != "${var^^}" ]; then
+			if [[ " $GLOBAL_VAR_LIST " == *" $var "* ]] && [ "$var" != "${var^^}" ]; then
 				echo_error "strongbash033_1 глобальная переменная $var должна быть в верхнем регистре"
-			else
-				:
-				# пропускаем, т.к. дает большое количество ложных срабатываний
-				# echo_error "strongbash033_2 в функции $fname переменная $var не объявлена как local"
 			fi
 		done
+	done
+	return 0
+}
+
+strongbash033_2(){
+	local fname var skip
+	for fname in $FUNCT_LIST; do
+		for var in ${F_UNKNOWN_VARS[$fname]:-}; do
+			if [[ " $GLOBAL_VAR_LIST " != *" $var "* ]]; then
+				for skip in BASH_ FUNCNAME ARG HOME LANG IFS UID EUID HOSTNAME\
+					PPID USER PATH TERM PS4 GROUPS PWD; do
+					[[ " $var" == " $skip"* ]] && continue 2
+				done
+				echo_error "strongbash033_2 в функции $fname переменная $var не объявлена как local"\
+					"в функции или для внешних, как declare в начале файла"
+				echo "F_BODY = ${F_BODY[$fname]}"
+			fi
+		done
+	done
+	return 0
+}
+
+strongbash033_3(){
+	local fname var
+	for fname in $FUNCT_LIST; do
 		for var in ${F_LOCAL_VARS[$fname]:-}; do
-			if [[ "$GLOBAL_VAR_LIST" == *" $var "* ]]; then
+			if [[ " $GLOBAL_VAR_LIST " == *" $var "* ]]; then
 				echo_error "strongbash033_3 в функции $fname переопределена глобальная переменная $var"
 			fi
+		done
+	done
+	return 0
+}
+
+strongbash033_4(){
+	local fname var
+	for fname in $FUNCT_LIST; do
+		for var in ${F_LOCAL_VARS[$fname]:-}; do
 			if [ "$var" != "${var,,}" ]; then
 				echo_error "strongbash033_4 в функции $fname имя локальной переменной $var"\
 					"должна быть в нижнем регистре"
 			fi
 		done
+	done
+	return 0
+}
+
+
+strongbash034(){
+	if grep -nP '^.*[^|]\|[ ]*grep [^;|&]*(-q|-m)(?!.*\|\|[ ]*true.*).*$' "$F"; then
+		echo_error "strongbash034 нельзя использовать grep -q или grep -m с pipe"\
+			"так как это приведет к разрыву pipe и ошибке"\
+			"-q можно заменить на >/dev/null"\
+			"к -m нужно добавить || true"
+	fi
+	return 0
+}
+
+strongbash035(){
+	local fname
+	for fname in $FUNCT_LIST; do
+		if grep -nP '.*(\$\(*|`)[ ]*'"$fname" "$F" >/dev/null \
+			&& ! echo "${F_BODY[$fname]}" | head -n 4 | grep 'set -e' >/dev/null ; then
+			echo_error "strongbash035 установите set -e в функции $fname"\
+				"тк она используется в subshell"
+			grep -nP '.*(\$\(*|`)[ ]*'"$fname" "$F"
+		fi
 	done
 	return 0
 }
@@ -646,6 +750,7 @@ else
 		if [[ "${0##*/}" == "crab_syntax" ]]; then
 			[[ " $self_skip " == *" $check "* ]] && continue
 		fi
+		# echo $check # time $check
 		$check
 	done
 fi

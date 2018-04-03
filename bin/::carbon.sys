@@ -35,33 +35,33 @@ __BASH_SOURCE=${BASH_SOURCE[1]}
 trap '__exit $? CMD=${BASH_COMMAND// /%%%%%} $@' ERR
 __exit(){
 	set +eux
-	local STATUS=$1
-	local CMD=
-	local ARGV=
+	local status=$1
+	local cmd=
+	local argv=
 	shift
 	if [[ "${1}" == "CMD="* ]]; then
-		CMD=${1//CMD=/}
-		CMD=${CMD//%%%%%/ }
+		cmd=${1//CMD=/}
+		cmd=${cmd//%%%%%/ }
 		shift
-		ARGV="$@"
+		argv="$@"
 	else
 		echo ""
-		echo "__exit $STATUS $@"
-		CMD="__exit"
-		ARGV=
+		echo "__exit $status $@"
+		cmd="__exit"
+		argv=
 	fi
 	echo ""
 	echo "    ERROR_PROG=$__BASH_SOURCE  $__ARGV"
 	echo "    ERROR_STACK=${BASH_SOURCE[@]:1}"
-	echo "    ERROR_SOURCE=${BASH_SOURCE[@]:1:1} $ARGV"
-	echo "    ERROR_CMD=\"${CMD}\"\
- ERROR_STATUS=$STATUS LINENO=${BASH_LINENO[@]:0:${#BASH_LINENO[@]}-1}\
+	echo "    ERROR_SOURCE=${BASH_SOURCE[@]:1:1} $argv"
+	echo "    ERROR_CMD=\"${cmd}\"\
+ ERROR_STATUS=$status LINENO=${BASH_LINENO[@]:0:${#BASH_LINENO[@]}-1}\
  FUNC: ${FUNCNAME[@]:1}"
 	echo ""
-	# echo grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
-	# grep -n "${CMD}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 | grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
+	# echo grep -n "${cmd}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
+	# grep -n "${cmd}" ${BASH_SOURCE[@]:1:1} -B 5 -A 5 | grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5
 	grep -n  . "${BASH_SOURCE[@]:1:1}" -B 5 -A 5 | grep "^${BASH_LINENO[@]:0:1}:" -B 5 -A 5 --color
-	exit ${STATUS:-0}
+	exit ${status:-0}
 }
 
 trap '__trapexit $?' EXIT
