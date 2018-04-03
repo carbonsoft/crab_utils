@@ -50,7 +50,8 @@ let s:indent_echo2 = -1
 let s:indent_slash = -1
 let s:indent_befor_skip = -1
 
-function GetShIndent()
+
+function GetShIndent0()
 	let prevnum = prevnonblank(v:lnum - 1)
 	if prevnum == 0
 		return 0
@@ -71,19 +72,6 @@ function GetShIndent()
 	let prevline = getline(prevnum)
 	let prevprevind = indent(prevprevnum)
 	let prevprevline = getline(prevprevnum)
-
-	if curline =~ '^#[^{}].*'
-		\ || curline =~ '^#$'
-		if s:indent_befor_skip =~ -1
-			let s:indent_befor_skip = prevind
-		endif
-		return 0
-	endif
-
-	if s:indent_befor_skip != -1
-		let prevind = s:indent_befor_skip
-		let s:indent_befor_skip = -1
-	endif
 
 	if prevline =~ '.*[<][<]EOF.*' && prevline !~ '^\s*#[ \t#]'
 		let s:indent_eof = prevind
@@ -183,6 +171,29 @@ function GetShIndent()
 		return prevind
 	endif
 
+
+
+	return prevind
+endfunction
+
+function GetShIndent()
+	let prevind = GetShIndent0()
+	let curline = getline(v:lnum)
+
+	if s:indent_eof==-1 && s:indent_echo1==-1 && s:indent_echo2==-1 && s:indent_slash==-1
+		if curline =~ '^#[^{}].*'
+			\ || curline =~ '^#$'
+			if s:indent_befor_skip =~ -1
+				let s:indent_befor_skip = prevind
+			endif
+			return 0
+		endif
+	endif
+
+	if s:indent_befor_skip != -1
+		let prevind = s:indent_befor_skip
+		let s:indent_befor_skip = -1
+	endif
 	return prevind
 endfunction
 

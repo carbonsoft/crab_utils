@@ -261,5 +261,23 @@ f8(){
 	return 0
 }
 
+if true; then
+# 1
+# 2
+	cmd
+fi
+
+if true; then
+# test 3
+	cat >tmp <<EOF
+# 1
+test1
+# 2
+test2
+test3
+EOF
+	cmd2
+fi
+
 echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
