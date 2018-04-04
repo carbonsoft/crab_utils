@@ -50,7 +50,7 @@ __exit(){
 		cmd="__exit"
 		argv=
 	fi
-	echo ""
+	echo "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
 	echo "    ERROR_PROG=$__BASH_SOURCE  $__ARGV"
 	echo "    ERROR_STACK=${BASH_SOURCE[@]:1}"
 	echo "    ERROR_SOURCE=${BASH_SOURCE[@]:1:1} $argv"
