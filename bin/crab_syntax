@@ -134,7 +134,8 @@ parse_variables(){
 		# определяем использование переменных echo $var
 		# оптимизация
 		if [[ "$line" == *"\$"[a-zA-Z]* ]] || [[ "$line" == *"\${"[a-zA-Z]* ]]; then
-			vars="${line//[{]/}"
+			vars="$( echo "$line" | sed "s/'.*'/ /g" )"
+			vars="${vars//[{]/}"
 			vars="${vars//[^a-zA-Z0-9_$]/:}"
 			vars="${vars//$/ }"
 			vars="${vars#* }"
@@ -683,7 +684,8 @@ strongbash033_2(){
 				done
 				echo_error "strongbash033_2 в функции $fname переменная $var не объявлена как local"\
 					"в функции или для внешних, как declare в начале файла"
-				echo "F_BODY = ${F_BODY[$fname]}"
+				# echo "F_BODY = ${F_BODY[$fname]}"
+				# echo "${F_UNKNOWN_VARS[$fname]:-}"
 			fi
 		done
 	done
@@ -716,29 +718,138 @@ strongbash033_4(){
 }
 
 
+SKIP_PIPEFAIL=\
+'grep sed tr awk tail head echo cat cut printf sort uniq wc
+uname date locate which tac dos2unix unix2dos
+iconv free lsmod dmidecode hostname netstat ps top
+egrep fgrep while ls find'
+SKIP_PIPEFAIL="${SKIP_PIPEFAIL//$'\n'/ }"
+# нельзя скипать hdparm free df du lsof lsattr xargs тк у них $1 изменяем и критичен
+# todo [ \t]).*| подозрение п пайпфейл просить поставить пайп фейл
+# todo if ! myip="$
+__check_pipebreak(){
+	local line="$1"
+	local prevline="$2"
+	local cmd="$3"
+	if [[ "$prevline" ==  *"set -o pipefail"* ]]\
+		&& [[ "$line" == *grep*"-q"* \
+		|| "$line" == *grep*"-m"* \
+		|| "$line" == *head* \
+		|| "$line" == *tail* ]]; then
+		echo "$line"
+		echo "^^^"
+		echo_error \
+"strongbash034_1 Будьте осторожны, использование grep -q grep -m 1 head tail
+вместе с set -o pipefail
+приведет к разрыву левой части pipe и остановке команды \"$cmd\"
+Если нормальное завершение этой команды необязательно,
+добавьте комментарий строкой выше # skip strongbash034.
+"
+	fi
+	return 0
+}
+strongbash034(){
+	local line tokens cmd prevline=
+	cat "$F" | sed -n 'H;${g;s/\\\n//gp}' \
+		| grep -v '|| true' \
+		| tr '\t!' ' ' \
+		| sed 's/\( [|][|] \|; \| && \| <( \)/\n/g'\
+		| grep -P '(^.* \| .*|^[ \t]*#|pipefail)' > /tmp/crab_syntax.online.$$
+	if [ $? != 0 ]; then
+		rm -f /tmp/crab_syntax.online.$$
+		return 0
+	fi
+	while IFS= read -r line; do
+		if echo "$line" | grep -Pq '^[ \t]*#.*'; then
+			prevline="$line"
+			continue
+		fi
+		if [[ "$prevline" == *"skip"*"trongbash034"* ]]; then
+			prevline="$line"
+			continue
+		fi
+		tokens="$( echo "$line" | grep ' | '  \
+			| sed 's/[^ ]*=.*\$[(]//' \
+			| sed 's/for .* in \$[(]//g' | sed 's/[^ ]*=["]*`//' \
+			| sed 's/for .* in `//g' | sed 's/[a-zA-Z0-9_]*=[a-zA-Z0-9_]*//' \
+			| sed 's/^[ ]*//' \
+			| sed 's/\(^\|[ ]\)\(if\|read\|for .*in\)[ ]/ /g' \
+			| sed 's/ | /\n/g' | sed -n 's/^[ ]*\([^ ]*\).*/\1/p' \
+			| grep -P '^[/a-zA-Z0-9_]{2,}$' \
+			| tr '\n' ' ' )"
+		# `
+		# крайний правый пайп  убираем тк он сам проверяет свои ошибки
+		tokens="${tokens% }"
+		tokens="${tokens% *}"
+		for cmd in $tokens; do
+			if [[ " $SKIP_PIPEFAIL " == *" $cmd "* ]]; then
+				continue
+			fi
+			if [[ "$prevline" ==  *"set -o pipefail"* ]]; then
+				__check_pipebreak "$line" "$prevline" "$cmd"
+				if [[ "$line" != *if*"$cmd"* ]]; then
+					prevline="$line"
+					continue 2
+				else
+					echo "$line"
+					echo "^^^"
+
+					echo_error "strongbash034_2 set -o pipefail не работает в if $cmd; then"
+				fi
+			fi
+			echo "$line"
+			echo "^^^"
+			echo_error \
+"strongbash034_3 Команда \"$cmd\" используется внутри pipe,
+ее код возврата не будет проанализирован.
+Вы можете:
+1. Или использовать промежуточную переменную ret=\$( $cmd )
+2. Или использовать set -o pipefail (кроме использования в if $cmd | cmd2)
+3. Или если Вы считаете код достаточно надежным для конкретного случая,
+   добавьте комментарий строкой выше # skip strongbash034 "
+		done
+		prevline="$line"
+	done < /tmp/crab_syntax.online.$$
+	rm -f /tmp/crab_syntax.online.$$
+	return 0
+}
+
 strongbash034_1(){
-	return 0
-	if grep -nP '^.*[^|]\|[ ]*grep [^;|&]*-q(?!.*\|\|[ ]*true.*).*$' "$F"; then
-		echo_error "strongbash034_1 нельзя использовать grep -q или grep -m с pipe"\
-			"так как это приведет к разрыву pipe и ошибке"\
-			"-q можно заменить на >/dev/null"\
-			"к -m нужно добавить || true"
-	fi
+	# checked in strongbash034
 	return 0
 }
-
 strongbash034_2(){
+	# checked in strongbash034
 	return 0
-	if grep -nP '^.*[^|]\|[ ]*grep [^;|&]*-m(?!.*\|\|[ ]*true.*).*$' "$F"; then
-		echo_error "strongbash034_2 нельзя использовать grep -q или grep -m с pipe"\
-			"так как это приведет к разрыву pipe и ошибке"\
-			"-q можно заменить на >/dev/null"\
-			"к -m нужно добавить || true"
+}
+strongbash034_3(){
+	# checked in strongbash034
+	return 0
+}
+
+strongbash034_4(){
+	if grep -qP '^[ \t]*\)[ ]*\|.*' "$F" \
+		&& ! grep -q 'o pipefail' "$F"; then
+		grep -nP '^[ \t]*\)[ ]*\|.*' "$F"
+		echo_error "strongbash034_4 необходимо включить set -o pipefail для ( code )| cmd"
 	fi
 	return 0
 }
 
-###
+strongbash034_5(){
+	if head -n 8 "$F" | grep -q 'o pipefail'; then
+		echo_error "strongbash034_5 нельзя устанавливать set -o pipefail на весь файл"
+	fi
+	return 0
+}
+
+strongbash035(){
+	if grep -nP  'if (! ){0,1}[a-zA-Z0-9_]*=["]*\$\(' "$F"; then
+		echo_error "strongbash035 нельзя использовать присвоение внутри if a\=\$(cmd)"
+	fi
+	return 0
+}
+
 self_skip='strongbash021_1 strongbash021_2 strongbash021_3 strongbash021_4 strongbash021_5'
 if [ $maybe == 1 ]; then
 	strongbash001
