@@ -837,11 +837,20 @@ strongbash034_4(){
 }
 
 strongbash034_5(){
-	if head -n 8 "$F" | grep -q 'o pipefail'; then
-		echo_error "strongbash034_5 нельзя устанавливать set -o pipefail на весь файл"
+	if [ "$( grep -P '^[ \t]*set.*[-].*pipefail' "$F" | wc -l )" \
+		!= "$( grep -P '^[ \t]*set.*[+].*pipefail' "$F" | wc -l )" ]; then
+		echo_error "strongbash034_5 все set -o pipefail нужно отключать после pipe set +o pipefail"
 	fi
 	return 0
 }
+
+strongbash034_6(){
+	if head -n 8 "$F" | grep -q 'o pipefail'; then
+		echo_error "strongbash034_6 нельзя устанавливать set -o pipefail на весь файл"
+	fi
+	return 0
+}
+
 
 strongbash035(){
 	if grep -nP  'if (! ){0,1}[a-zA-Z0-9_]*=["]*\$\(' "$F"; then
