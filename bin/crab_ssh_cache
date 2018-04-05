@@ -10,8 +10,9 @@ if [ "${1:---help}" = '--help' ]; then
 	echo 'Example: ssh_cache -i my_rsa root@example.com 10000'
 	exit 0
 fi
+
 prepare_arg(){
-	argc=$#
+	local argc=$#
 	SSH_OPT=''
 	for((i=0;i<$argc-2;i++)); do
 		SSH_OPT="$SSH_OPT $1"

@@ -42,13 +42,14 @@ mysql_dumpsplit(){
 PREFIX="${DB_NAME}.sql"
 rm -f "$PREFIX.table."*
 
+set -o pipefail
 mysqldump --user=$USER --host="$DB_HOST" --password="$PASSWORD" \
 	--opt -c --databases "$DB_NAME" \
 	--skip-quick \
 	--add-drop-table --add-drop-database --skip-extended-insert \
 	--create-options --single-transaction \
 	| csplit -n 4  -s -f"$PREFIX.table." - '/-- Table structure for table/' '{*}'
-
+set +o pipefail
 mysql_dumpsplit
 
 git add .

@@ -12,6 +12,7 @@ set -eu
 
 create_symlink(){
 	set -eu
+	local f
 	for f in /opt/crab/*/bin/crab_*; do
 		[ -x "$f" ] && ln -fs "$f" /bin/${f##*/}
 	done
@@ -30,13 +31,16 @@ configure_mc(){
 }
 
 git_update(){
+	local repo
 	(
 		for repo in /opt/crab/*; do
 			[ ! -d "$repo/.git/" ] && continue
 			cd $repo
+			# skip strongbash034
 			if ! git branch  | grep '*' | grep -w 'master'; then
 				continue
 			fi
+			# skip strongbash034
 			if LANG=C git status | grep -qm1 modified; then
 				rsync -a /opt/crab/ /opt/crab.$$/
 				echo "all modified files moved to /opt/crab.$$/" >/opt/crab/README.$$

@@ -60,7 +60,7 @@ __git_find_add() {
 
 
 autogit_sync() {
-	local subdir t excludes msg current_branch
+	local subdir t excludes msg current_branch force
 	cd "$ARG_DIR"
 
 	[ ! -d ".git" -o ! -s ".autogit" -o ! -f ".gitignore" ] && __init_dir
@@ -76,6 +76,7 @@ autogit_sync() {
 			continue
 		fi
 		__git_find_add "$subdir" "$excludes" "$force"
+		# skip strongbash034
 		if ! git status | grep -qm1 'nothing to commit'; then
 			git commit -a -F - <<EOF
 ${USER_MSG:-}
@@ -87,6 +88,7 @@ EOF
 	done < .autogit
 
 	git gc
+	# skip strongbash034
 	if git remote | grep -xqm1 origin; then
 		current_branch="$(git rev-parse --abbrev-ref HEAD)"
 		git push origin "$current_branch:$current_branch"
@@ -96,10 +98,10 @@ EOF
 
 
 __git_config_set(){
+	local myip
 	cd "$ARG_DIR"
-	if ! myip="$( ip r g 1 | grep src | sed 's/.*src //' )"; then
-		myip="$(hostname)"
-	fi
+	myip="$( ip r g 1 | grep src | sed 's/.*src //' )" || true
+	[ "$myip" = "" ] && myip="$(hostname)"
 	git config user.email "root@$myip"
 	git config user.name "crab_autogit"
 	return 0
@@ -129,6 +131,7 @@ EOF
 	fi
 
 	git add .autogit .gitignore
+	# skip strongbash034
 	if ! git status | grep 'nothing to commit'; then
 		git commit -am init
 	fi
@@ -137,10 +140,8 @@ EOF
 
 
 __ssh_repo_init(){
-	local _
 	local rdir=${ARG_ORIGIN##*:}
-
-	rhost="${ARG_ORIGIN%%:*}"
+	local rhost="${ARG_ORIGIN%%:*}"
 	[[ "$rhost" != *@* ]] && rhost="root@$rhost"
 	if [ ! -f /root/.ssh/id_rsa ]; then
 		ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa
@@ -187,8 +188,8 @@ autogit_install(){
 	cd "$ARG_DIR"
 	[[ "${ARG_ORIGIN:-}" == *:/*  ]] && __ssh_repo_init
 	__init_dir
-	if [ -n "${ARG_ORIGIN}" ] \
-		&& ! git remote | grep -xqm1 origin; then
+	# skip strongbash034
+	if [ -n "${ARG_ORIGIN}" ] && ! git remote | grep -xqm1 origin; then
 		git remote add origin "${ARG_ORIGIN}"
 	fi
 	autogit_sync

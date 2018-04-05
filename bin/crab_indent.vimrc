@@ -73,6 +73,11 @@ function GetShIndent0()
 	let prevprevind = indent(prevprevnum)
 	let prevprevline = getline(prevprevnum)
 
+	if s:indent_befor_skip != -1
+		let prevind = s:indent_befor_skip
+		let s:indent_befor_skip = -1
+	endif
+
 	if prevline =~ '.*[<][<]EOF.*' && prevline !~ '^\s*#[ \t#]'
 		let s:indent_eof = prevind
 		return curind
@@ -190,10 +195,6 @@ function GetShIndent()
 		endif
 	endif
 
-	if s:indent_befor_skip != -1
-		let prevind = s:indent_befor_skip
-		let s:indent_befor_skip = -1
-	endif
 	return prevind
 endfunction
 

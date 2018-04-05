@@ -113,7 +113,6 @@ __add_var(){
 parse_variables(){
 	local var_name= cur_fname= line= is_local_declare=
 	local var= __is_local_var_ret= vars=
-
 	while IFS='' read -r line; do
 		[[ "$line" == "#"* ]] && continue
 		[[ "${line//[$__SPACE]/}" == "'"* ]] && continue
@@ -134,7 +133,9 @@ parse_variables(){
 		# определяем использование переменных echo $var
 		# оптимизация
 		if [[ "$line" == *"\$"[a-zA-Z]* ]] || [[ "$line" == *"\${"[a-zA-Z]* ]]; then
-			vars="$( echo "$line" | sed "s/'.*'/ /g" )"
+			vars=":$line"
+			vars="${vars//\\$/  }"
+			vars="$( echo "$vars" | sed "s/'.*'/ /g" )"
 			vars="${vars//[{]/}"
 			vars="${vars//[^a-zA-Z0-9_$]/:}"
 			vars="${vars//$/ }"
@@ -178,7 +179,7 @@ parse_variables(){
 		# else
 		#	F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]:-} $var_name"
 		# fi
-	done < "$F"
+	done < <( sed 's/^[ \t]*//' "$F" )
 	return 0
 }
 parse_variables
@@ -490,7 +491,7 @@ strongbash021_4(){
 }
 
 strongbash021_5(){
-	if ! grep -q '# skip strongbash021_5' "$F" \
+	if ! grep -q '# skip.*trongbash021_5' "$F" \
 		&& grep -n -P 'trap.*(EXIT|0).*' "$F"; then
 		echo_error "strongbash021_5 нельзя использовать trap EXIT"\
 			" или укажите # skip strongbash021_5"

@@ -300,6 +300,31 @@ test3
 EOF
 	cmd2
 fi
+if [ "${1:-}" = "save" ]; then
+	check_and_set_dir "${2:-}"
+	if [ -n "${3:-}" ]; then
+		USER_MSG="$3"
+	fi
+	autogit_sync
+
+elif [ "${1:-}" = "install" ]; then
+	check_and_set_dir "${2:-}"
+	ARG_ORIGIN="${3:-}"
+	autogit_install
+
+# Для совместимости со старыми версиями, $0 /dir - эквивалентно $0 save /dir
+elif [ ! -z "${1:-}" -a -d "${1:-}" ]; then
+	check_and_set_dir "${1:-}"
+	if [ -n "${2:-}" ]; then
+		USER_MSG="$2"
+	fi
+	autogit_sync
+
+else
+	echo -e "\nUnknown command: ${1:-}\n"
+	usage
+	exit 1
+fi
 
 echo "$0 $@ [$$] SUCCESS" >&2
 exit 0
