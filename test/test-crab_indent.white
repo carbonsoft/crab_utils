@@ -3,7 +3,7 @@
 echo "$0 $@ [$$] START" >&2
 
 set -euEo pipefail
-# set -euEo pipefail
+# set -eu
 
 sys::usage "$@"
 ### --help Info:

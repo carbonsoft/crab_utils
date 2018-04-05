@@ -1,8 +1,11 @@
 #!####bin/bash
 ### strongbash008 Обязательно использовать #!/bin/bash даже в include'
 
-### strongbash002 Не установлен set -euEo pipefail
-set +euEo pipefail
+### strongbash002 Не установлен set -eu
+set +eu
+
+### strongbash034_6 нельзя устанавливать set -o pipefail на весь файл"
+set -uEopipefail
 
 ### strongbash006 1
 echo $0 ST#A#RT
@@ -486,6 +489,15 @@ done
 ### strongbash026 Нельзя использовать голые скобки для assert и тп [ a = b ]
 [ 1 = 2 ]
 
+### strongbash023  1. Нужно всегда использовать read -r f1 f2 
+### strongbash023  2. А для чтения целой строки while IFS='' read -r line; do
+read f1 f2 < /tmp/myfile
+
+while read line; do
+	 echo "$f"
+done < /tmp/myfile
+
+
 ### strongbash024 1. Запрещено rm -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
 ### strongbash024 2. rm -rf  всегда с -one-file-system
 dir="/tmp/1231231313123123123123123"
@@ -503,13 +515,6 @@ rm -rf -one-file-system "$dir/*"
 ### strongbash024_4
 rm -rf "$dir"
 
-### strongbash023  1. Нужно всегда использовать read -r f1 f2 
-### strongbash023  2. А для чтения целой строки while IFS='' read -r line; do
-read f1 f2 < /tmp/myfile
-
-while read line; do
-	 echo "$f"
-done < /tmp/myfile
 
 ### strongbash022_1 Утилиты должны удалять за собой временные файлы
 tmpf="/tmp/rrr.$$"
@@ -610,21 +615,10 @@ FAIL033_3(){
 }
 
 ### strongbash033_4 имя локальной переменной должно быть в нижнем регистре
-FAIL033_3(){
+FAIL033_4(){
         local LOCALVAR2=0
         echo $LOCALVAR2
 }
-
-### strongbash034_1 нельзя использовать | grep -q
-if cat | grep -q; then
-	echo ttt
-fi
-
-### strongbash034_2 нельзя использовать | grep -m
-if cat | grep -m1; then
-	echo ttt
-fi
-
 
 ### strongbash033_1 глобальная переменная $var должна быть в верхнем регистре
 globalvar1=123
@@ -651,15 +645,42 @@ FAIL033_3(){
         echo $LOCALVAR2
 }
 
-### strongbash034_1 нельзя использовать | grep -q
-if cat | grep -q; then
-	echo ttt
+### strongbash034
+### strongbash034_1 Будьте осторожны, использование grep -q grep -m 1 head tail
+### вместе с set -o pipefail
+### приведет к разрыву левой части pipe и остановке команды \"$cmd\"
+### Если нормальное завершение этой команды необязательно,
+
+set -o pipefail
+ip1="$( ip | grep -m 1 src)"
+set +o pipefail
+
+### strongbash034_2 set -o pipefail не работает в if $cmd; then
+set -o pipefail
+if [ "$( ip | grep src )" != "" ]; then
+	echo eee
 fi
 
-### strongbash034_2 нельзя использовать | grep -m
-if cat | grep -m1; then
-	echo ttt
+### strongbash034_3 Команда \"$cmd\" используется внутри pipe
+ip1="$( ip | grep src)"
+
+### strongbash034_4 необходимо включить set -o pipefail для ( code )| cmd"
+(
+	ls
+) | sort
+
+### strongbash034_5 все set -o pipefail нужно отключать после pipe set +o pipefail"
+set -o pipefail
+ls | grep a
+
+### strongbash034_6 нельзя устанавливать set -o pipefail на весь файл"
+### см начало файла
+
+### strongbash035 нельзя использовать присвоение внутри if a\=\$(cmd)"
+if cmd="$( ip | grep src)"; then
+	echo $cmd
 fi
+
 
 ### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 echo S#U#C#C#E#S#S

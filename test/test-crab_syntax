@@ -24,14 +24,16 @@ fi
 check_funcs=$( cat /opt/crab/crab_utils/bin/crab_syntax \
 	| grep 'strongbash[0-9][0-9][0-9][_]*[0-9]*()' \
 	| sed -n  's/^\(strongbash[0-9_]\{3,5\}\).*/\1/p' ) # '
-
 for func in $check_funcs; do
-	if ! grep -qm1 "$func" /tmp/test-crab_syntax.$$; then
+	if ! grep -qwm1 "$func" /tmp/test-crab_syntax.$$; then
 		echo "TEST $0 $func not found in "\
 			"/opt/crab/crab_utils/test/test-crab_syntax.black [ FAILED ]"
 		failed=TRUE
 	fi
-	if ! grep -qm1 "$func" /opt/crab/crab_utils/test/test-crab_syntax.white; then
+done
+
+for func in $check_funcs; do
+	if ! grep -qwm1 "$func" /opt/crab/crab_utils/test/test-crab_syntax.white; then
 		echo "TEST $0 $func not found in "\
 			"/opt/crab/crab_utils/test/test-crab_syntax.white [ FAILED ]"
 		failed=TRUE

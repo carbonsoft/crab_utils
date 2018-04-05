@@ -490,8 +490,10 @@ strongbash021_4(){
 }
 
 strongbash021_5(){
-	if grep -n -P 'trap.*(EXIT|0).*' "$F"; then
-		echo "WARNING ^^^ strongbash021_5 не рекомендуется использовать trap EXIT"
+	if ! grep -q '# skip strongbash021_5' "$F" \
+		&& grep -n -P 'trap.*(EXIT|0).*' "$F"; then
+		echo_error "strongbash021_5 нельзя использовать trap EXIT"\
+			" или укажите # skip strongbash021_5"
 	fi
 	return 0
 }
@@ -720,7 +722,7 @@ strongbash033_4(){
 
 SKIP_PIPEFAIL=\
 'grep sed tr awk tail head echo cat cut printf sort uniq wc
-uname date locate which tac dos2unix unix2dos
+uname date locate which tac dos2unix unix2dos tee
 iconv free lsmod dmidecode hostname netstat ps top
 egrep fgrep while ls find'
 SKIP_PIPEFAIL="${SKIP_PIPEFAIL//$'\n'/ }"
@@ -743,19 +745,45 @@ __check_pipebreak(){
 вместе с set -o pipefail
 приведет к разрыву левой части pipe и остановке команды \"$cmd\"
 Если нормальное завершение этой команды необязательно,
-добавьте комментарий строкой выше # skip strongbash034.
+добавьте || true или комментарий строкой выше # skip strongbash034.
 "
 	fi
 	return 0
 }
+
+__getpipetokens(){
+	set -e
+	local line="$1"
+	echo "$line" | grep ' | '  \
+		| sed 's/[^ ]*=.*\$[(]/ /' \
+		| tee -a /tmp/tokens_debug.$$ \
+		| sed 's/for .* in \$[(]//g' | sed 's/[^ ]*=["]*`//' \
+		| tee -a /tmp/tokens_debug.$$ \
+		| sed 's/for .* in `//g' | sed 's/[a-zA-Z0-9_]*=[a-zA-Z0-9_]*//' \
+		| tee -a /tmp/tokens_debug.$$ \
+		| sed 's/^[ ]*//' \
+		| tee -a /tmp/tokens_debug.$$ \
+		| sed 's/\(^\|[ ]\)\(if\|\[\]\|read\|for .*in\)[ ]/ /g' \
+		| tee -a /tmp/tokens_debug.$$ \
+		| sed 's/\$(/\n/g' \
+		| tee -a /tmp/tokens_debug.$$ \
+		| sed 's/ | /\n/g' | sed -n 's/^[ ]*\([^ ]*\).*/\1/p' \
+		| tee -a /tmp/tokens_debug.$$ \
+		| grep -P '^[/a-zA-Z0-9_]{2,}$' \
+		| tee -a /tmp/tokens_debug.$$ \
+		| tr '\n' ' '
+# debug	cat /tmp/tokens.$$
+	rm -f /tmp/tokens_debug.$$
+	return 0
+}
 strongbash034(){
 	local line tokens cmd prevline=
-	cat "$F" | sed -n 'H;${g;s/\\\n//gp}' \
+	( echo '\'; cat "$F" ) | sed -n 'H;${g;s/\\\n//gp}' \
 		| grep -v '|| true' \
 		| tr '\t!' ' ' \
 		| sed 's/\( [|][|] \|; \| && \| <( \)/\n/g'\
-		| grep -P '(^.* \| .*|^[ \t]*#|pipefail)' > /tmp/crab_syntax.online.$$
-	if [ $? != 0 ]; then
+		| grep -P '(^.* \| .*|^[ \t]*#|pipefail)' > /tmp/crab_syntax.online.$$ || true
+	if [ ! -s /tmp/crab_syntax.online.$$ ]; then
 		rm -f /tmp/crab_syntax.online.$$
 		return 0
 	fi
@@ -768,15 +796,7 @@ strongbash034(){
 			prevline="$line"
 			continue
 		fi
-		tokens="$( echo "$line" | grep ' | '  \
-			| sed 's/[^ ]*=.*\$[(]//' \
-			| sed 's/for .* in \$[(]//g' | sed 's/[^ ]*=["]*`//' \
-			| sed 's/for .* in `//g' | sed 's/[a-zA-Z0-9_]*=[a-zA-Z0-9_]*//' \
-			| sed 's/^[ ]*//' \
-			| sed 's/\(^\|[ ]\)\(if\|read\|for .*in\)[ ]/ /g' \
-			| sed 's/ | /\n/g' | sed -n 's/^[ ]*\([^ ]*\).*/\1/p' \
-			| grep -P '^[/a-zA-Z0-9_]{2,}$' \
-			| tr '\n' ' ' )"
+		tokens=$( __getpipetokens "$line" )
 		# `
 		# крайний правый пайп  убираем тк он сам проверяет свои ошибки
 		tokens="${tokens% }"
@@ -805,8 +825,9 @@ strongbash034(){
 Вы можете:
 1. Или использовать промежуточную переменную ret=\$( $cmd )
 2. Или использовать set -o pipefail (кроме использования в if $cmd | cmd2)
-3. Или если Вы считаете код достаточно надежным для конкретного случая,
-   добавьте комментарий строкой выше # skip strongbash034 "
+4. Или если Вы считаете код достаточно надежным для конкретного случая,
+   добавьте || true в конце
+5. Или комментарий строкой выше # skip strongbash034 "
 		done
 		prevline="$line"
 	done < /tmp/crab_syntax.online.$$
@@ -829,7 +850,8 @@ strongbash034_3(){
 
 strongbash034_4(){
 	if grep -qP '^[ \t]*\)[ ]*\|.*' "$F" \
-		&& ! grep -q 'o pipefail' "$F"; then
+		&& ! grep -P -A 1 '^[ \t]*set.*[-].*pipefail' "$F" \
+		| grep -qP '^[ \t]*\(.*' ; then
 		grep -nP '^[ \t]*\)[ ]*\|.*' "$F"
 		echo_error "strongbash034_4 необходимо включить set -o pipefail для ( code )| cmd"
 	fi
@@ -839,6 +861,7 @@ strongbash034_4(){
 strongbash034_5(){
 	if [ "$( grep -P '^[ \t]*set.*[-].*pipefail' "$F" | wc -l )" \
 		!= "$( grep -P '^[ \t]*set.*[+].*pipefail' "$F" | wc -l )" ]; then
+		grep -P -A 60 '^[ \t]*set.*[-].*pipefail' "$F" || true
 		echo_error "strongbash034_5 все set -o pipefail нужно отключать после pipe set +o pipefail"
 	fi
 	return 0

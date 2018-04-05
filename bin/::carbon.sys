@@ -32,6 +32,7 @@ __BASH_SOURCE=${BASH_SOURCE[1]}
 
 [ "${__SILENT:-}" = "" ] && echo "START ${__BASH_SOURCE} $__ARGV [$$]" >&2
 
+# skip strongbash021_5
 trap '__exit $? CMD=${BASH_COMMAND// /%%%%%} $@' ERR
 __exit(){
 	set +eux
