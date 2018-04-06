@@ -1,6 +1,6 @@
 #!/bin/bash
-set -euEo pipefail
-# set -x
+
+set -eu
 
 echo "$0 $@ [$$] START" >&2
 
@@ -112,7 +112,7 @@ get_file_type() {
 	# Возвращаемый тип, должен поддерживаться crab_syntax
 	# Возвращаем только те типы, которые надо проверять.
 	local file="$1"
-	local file_type;
+	local file_type file_mime_type
 
 	file_mime_type=$(file -bi "$file")
 
@@ -146,11 +146,11 @@ check_file() {
 		|| crab_syntax --maybe "$TMP_NEW_WORK_DIR/$file" "$file_type" \
 		&> "$TMP_NEW_WORK_DIR/${file}.crab_maybe"; then
 
-		echo "$myname: --- crab_syntax $TMP_NEW_WORK_DIR/$file $file_type ---"
+		echo "$MYNAME: --- crab_syntax $TMP_NEW_WORK_DIR/$file $file_type ---"
 		if crab_syntax "$TMP_NEW_WORK_DIR/$file" "$file_type"; then
 			store_success_file "$file"
 		else
-			echo "$myname: --- check failed ---"
+			echo "$MYNAME: --- check failed ---"
 			CHECK_ERR_COUNT=$(($CHECK_ERR_COUNT+1))
 		fi
 	fi
@@ -213,7 +213,7 @@ find_latest_old_commit() {
 }
 
 
-myname=${0##*/}
+MYNAME=${0##*/}
 
 ref=$1
 old_commit=$2
@@ -264,15 +264,16 @@ else
 fi
 # echo "check_range=$check_range"
 
+# skip strongbash034
 if git log -n 1 $new_commit | grep -qm1 $MAGIC_FORCE_STR; then
-	echo "$myname: Force commit push! Skip check."
+	echo "$MYNAME: Force commit push! Skip check."
 	echo "$0 $@ [$$] SUCCESS" >&2
 	exit 0
 fi
 
 CHECK_ERR_COUNT=0  # счётчик файлов не прошедших проверку.
 
-TMP_WORK_DIR=/tmp/${myname}.$$  # may be trap on conflict.
+TMP_WORK_DIR=/tmp/${MYNAME}.$$  # may be trap on conflict.
 [ -d "$TMP_WORK_DIR" ] && { echo "Error: $TMP_WORK_DIR already exists"; exit 1; }
 TMP_NEW_WORK_DIR=$TMP_WORK_DIR/new
 TMP_OLD_WORK_DIR=$TMP_WORK_DIR/old
@@ -299,7 +300,7 @@ while IFS=$'\t' read -r mode file any_tail; do
 		file=$(restore_filename "$file")
 		# Если файл есть во временной папке, значит мы его уже проверили.
 		if [ -f $TMP_NEW_WORK_DIR/"$file" ]; then
-			echo "$myname: Already check file: $file, skip."
+			echo "$MYNAME: Already check file: $file, skip."
 			continue
 		fi
 		ret=$(check_file_size "$file" "$new_commit")
@@ -319,7 +320,7 @@ while IFS=$'\t' read -r mode file any_tail; do
 			continue
 		fi
 
-		echo "$myname: check $file_type file $file"
+		echo "$MYNAME: check $file_type file $file"
 		check_file "$file" "$file_type"
 	fi  # if new_file
 done < $TMP_WORK_DIR/git_log
