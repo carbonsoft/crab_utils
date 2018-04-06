@@ -708,17 +708,7 @@ strongbash033_3(){
 	return 0
 }
 
-# strongbash033_4(){
-#	local fname var
-#	for fname in $FUNCT_LIST; do
-#		for var in ${F_LOCAL_VARS[$fname]:-}; do
-#			if [[ " $GLOBAL_VAR_LIST " == *" $var "* ]]; then
-#				echo_error "strongbash033_4 в функции $fname переопределена глобальная переменная $var"
-#			fi
-#		done
-#	done
-#	return 0
-# }
+# Отменено echo_error "strongbash033_4 в функции $fname переопределена глобальная переменная $var"
 
 
 SKIP_PIPEFAIL=\
