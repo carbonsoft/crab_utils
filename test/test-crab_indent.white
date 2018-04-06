@@ -2,7 +2,7 @@
 
 echo "$0 $@ [$$] START" >&2
 
-set -euEo pipefail
+set -eu
 # set -eu
 
 sys::usage "$@"
@@ -114,7 +114,7 @@ cat /proc/meminfo \
 		echo test
 	)
 }
-
+set -o pipefail
 (
 	set -x; PS4=''; . /node/bin/__vm_config;
 	set +x;
@@ -155,7 +155,7 @@ cat /proc/meminfo \
 
 		done
 	) | sort
-
+set +o pipefail
 __node(){
 	shift
 	case $1 in
@@ -331,8 +331,7 @@ get_file_type() {
 	# Возвращаемый тип, должен поддерживаться crab_syntax
 	# Возвращаем только те типы, которые надо проверять.
 	local file="$1"
-	local file_type;
-
+	local file_type file_mime_type
 	file_mime_type=$(file -bi "$file")
 
 	case "$file_mime_type" in
