@@ -62,7 +62,6 @@ function GetShIndent0()
 		prevprevnum = prevnum
 	endif
 
-	
 	" Add a 'shiftwidth' after if, while, else, case, until, for, function()
 	" Skip if the line also contains the closure for the above
 
@@ -75,7 +74,13 @@ function GetShIndent0()
 
 	if s:indent_befor_skip != -1
 		let prevind = s:indent_befor_skip
-		let s:indent_befor_skip = -1
+	endif
+	if curline =~ '^\s*#[^{}].*' || curline =~ '^\s*#$'
+		let curline='# '
+	endif
+
+	if prevline =~ '^\s*#[^{}].*' || prevline =~ '^\s*#$'
+		let prevline='# '
 	endif
 
 	if prevline =~ '.*[<][<]EOF.*' && prevline !~ '^\s*#[ \t#]'
@@ -182,19 +187,19 @@ function GetShIndent0()
 endfunction
 
 function GetShIndent()
-	let prevind = GetShIndent0()
 	let curline = getline(v:lnum)
-
+	let prevind = GetShIndent0()
 	if s:indent_eof==-1 && s:indent_echo1==-1 && s:indent_echo2==-1 && s:indent_slash==-1
-		if curline =~ '^#[^{}].*'
-			\ || curline =~ '^#$'
+		if curline =~ '^#[^{}].*' || curline =~ '^#$'
 			if s:indent_befor_skip =~ -1
 				let s:indent_befor_skip = prevind
 			endif
 			return 0
 		endif
 	endif
-
+	if s:indent_befor_skip != -1
+		let s:indent_befor_skip = -1
+	endif
 	return prevind
 endfunction
 
