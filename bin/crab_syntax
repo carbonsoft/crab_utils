@@ -699,26 +699,26 @@ strongbash033_3(){
 	local fname var
 	for fname in $FUNCT_LIST; do
 		for var in ${F_LOCAL_VARS[$fname]:-}; do
-			if [[ " $GLOBAL_VAR_LIST " == *" $var "* ]]; then
-				echo_error "strongbash033_3 в функции $fname переопределена глобальная переменная $var"
-			fi
-		done
-	done
-	return 0
-}
-
-strongbash033_4(){
-	local fname var
-	for fname in $FUNCT_LIST; do
-		for var in ${F_LOCAL_VARS[$fname]:-}; do
 			if [ "$var" != "${var,,}" ]; then
-				echo_error "strongbash033_4 в функции $fname имя локальной переменной $var"\
+				echo_error "strongbash033_3 в функции $fname имя локальной переменной $var"\
 					"должна быть в нижнем регистре"
 			fi
 		done
 	done
 	return 0
 }
+
+# strongbash033_4(){
+#	local fname var
+#	for fname in $FUNCT_LIST; do
+#		for var in ${F_LOCAL_VARS[$fname]:-}; do
+#			if [[ " $GLOBAL_VAR_LIST " == *" $var "* ]]; then
+#				echo_error "strongbash033_4 в функции $fname переопределена глобальная переменная $var"
+#			fi
+#		done
+#	done
+#	return 0
+# }
 
 
 SKIP_PIPEFAIL=\
@@ -728,8 +728,7 @@ iconv free lsmod dmidecode hostname netstat ps top
 egrep fgrep while ls find'
 SKIP_PIPEFAIL="${SKIP_PIPEFAIL//$'\n'/ }"
 # нельзя скипать hdparm free df du lsof lsattr xargs тк у них $1 изменяем и критичен
-# todo [ \t]).*| подозрение п пайпфейл просить поставить пайп фейл
-# todo if ! myip="$
+
 __check_pipebreak(){
 	local line="$1"
 	local prevline="$2"
@@ -862,7 +861,7 @@ strongbash034_4(){
 strongbash034_5(){
 	if [ "$( grep -P '^[ \t]*set.*[-].*pipefail' "$F" | wc -l )" \
 		!= "$( grep -P '^[ \t]*set.*[+].*pipefail' "$F" | wc -l )" ]; then
-		grep -P -A 60 '^[ \t]*set.*[-].*pipefail' "$F" || true
+		grep -P -B4 -A4 '^[ \t]*set.*[-].*pipefail' "$F" || true
 		echo_error "strongbash034_5 все set -o pipefail нужно отключать после pipe set +o pipefail"
 	fi
 	return 0

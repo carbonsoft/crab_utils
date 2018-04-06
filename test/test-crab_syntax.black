@@ -607,40 +607,8 @@ FAIL033_2(){
 	echo $mylocalvar
 }
 
-### strongbash033_3 переопределена глобальная переменная
-GLOBALVAR2=1234
-FAIL033_3(){
-	local GLOBALVAR2=0
-	echo $GLOBALVAR2
-}
-
-### strongbash033_4 имя локальной переменной должно быть в нижнем регистре
+### strongbash033_3 имя локальной переменной должно быть в нижнем регистре
 FAIL033_4(){
-        local LOCALVAR2=0
-        echo $LOCALVAR2
-}
-
-### strongbash033_1 глобальная переменная $var должна быть в верхнем регистре
-globalvar1=123
-FAIL033_1(){
-	echo $globalvar1
-}
-
-### strongbash033_2 локальные переменные должны быть объявлены как local
-### или для внешних, как declare в начале файла
-FAIL033_2(){
-	echo $mylocalvar
-}
-
-### strongbash033_3 переопределена глобальная переменная
-GLOBALVAR2=1234
-FAIL033_3(){
-	local GLOBALVAR2=0
-	echo $GLOBALVAR2
-}
-
-### strongbash033_4 имя локальной переменной должно быть в нижнем регистре
-FAIL033_3(){
         local LOCALVAR2=0
         echo $LOCALVAR2
 }

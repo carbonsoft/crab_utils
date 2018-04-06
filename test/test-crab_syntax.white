@@ -399,15 +399,7 @@ FAIL033_2(){
 	return 0
 }
 
-### strongbash033_3 переопределена глобальная переменная
-GLOBALVAR2=1234
-FAIL033_3(){
-	GLOBALVAR2=0
-	echo $GLOBALVAR2
-	return 0
-}
-
-### strongbash033_4 имя локальной переменной должно быть в нижнем регистре
+### strongbash033_3 имя локальной переменной должно быть в нижнем регистре
 FAIL033_3(){
 	local lll=0
 	echo lll
