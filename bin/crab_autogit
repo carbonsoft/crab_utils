@@ -49,7 +49,7 @@ __git_find_add() {
 	# поэтому делаем небольшой воркараунд, чтобы добавлять по отдельныму каталогу
 
 	[ -n "$excludes" ] && excludes="! -path ${excludes// / ! -path }"
-	find "$adddir" -type d '!' -path '**.git*' $excludes \
+	find "$adddir" -type d '!' -path '*.git*' $excludes \
 		| while read -r findsubdir; do
 			find "$findsubdir" -maxdepth 1 ! -type d '!' -path '*.git*' -print0 \
 			| xargs -r -0 -n100 git add $force 2>&1 \
