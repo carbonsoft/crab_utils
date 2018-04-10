@@ -95,13 +95,13 @@ __is_local_var(){
 __add_var(){
 	local var_name=$1 cur_fname=$2 __is_local_var_ret=
 	if [ "$cur_fname" = "" ]; then
-		[[ " $GLOBAL_VAR_LIST " == *" $var_name "* ]] && continue
+		[[ " $GLOBAL_VAR_LIST " == *" $var_name "* ]] && return 0
 		GLOBAL_VAR_LIST="$GLOBAL_VAR_LIST $var_name"
 		continue
 	fi
 	# Проверяем, что переменная уже сохранена
-	[[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
-	[[ " ${F_UNKNOWN_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
+	[[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && return 0
+	[[ " ${F_UNKNOWN_VARS[$cur_fname]:-} " == *" $var_name "* ]] && return 0
 	__is_local_var_ret=$( __is_local_var $var_name $cur_fname )
 	if [ "${__is_local_var_ret}" = TRUE ]; then
 		F_LOCAL_VARS[$cur_fname]="${F_LOCAL_VARS[$cur_fname]:-} $var_name"
