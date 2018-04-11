@@ -728,6 +728,7 @@ __check_pipebreak(){
 		|| "$line" == *grep*"-m"* \
 		|| "$line" == *head* \
 		|| "$line" == *tail* ]]; then
+		echo "$prevline"
 		echo "$line"
 		echo "^^^"
 		echo_error \
@@ -801,12 +802,14 @@ strongbash034(){
 					prevline="$line"
 					continue 2
 				else
+					echo "$prevline"
 					echo "$line"
 					echo "^^^"
 
 					echo_error "strongbash034_2 set -o pipefail не работает в if $cmd; then"
 				fi
 			fi
+			echo "$prevline"
 			echo "$line"
 			echo "^^^"
 			echo_error \
