@@ -687,8 +687,11 @@ strongbash033_2(){
 					PPID USER PATH TERM PS4 GROUPS PWD; do
 					[[ " $var" == " $skip"* ]] && continue 2
 				done
-				echo_error "strongbash033_2 в функции $fname переменная $var не объявлена как local"\
-					"в функции или для внешних, как declare в начале файла"
+				grep -q "skip strongbash033.*$var" "$F" && continue
+				echo_error \
+"strongbash033_2 в функции $fname переменная $var не объявлена как local
+или для внешних, как declare в начале файла
+или для совместимости со старым кодом: # skip strongbash033 \$var \$$var \$var2"
 				# echo "F_BODY = ${F_BODY[$fname]}"
 				# echo "${F_UNKNOWN_VARS[$fname]:-}"
 			fi
