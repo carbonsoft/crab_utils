@@ -97,7 +97,7 @@ __add_var(){
 	if [ "$cur_fname" = "" ]; then
 		[[ " $GLOBAL_VAR_LIST " == *" $var_name "* ]] && return 0
 		GLOBAL_VAR_LIST="$GLOBAL_VAR_LIST $var_name"
-		continue
+		return 0
 	fi
 	# Проверяем, что переменная уже сохранена
 	[[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && return 0
@@ -123,6 +123,8 @@ parse_variables(){
 			FUNCT_LIST="$FUNCT_LIST $cur_fname"
 			F_LOCAL_VARS[$cur_fname]=''
 			F_UNKNOWN_VARS[$cur_fname]=''
+			# перестраховка set -u от разного парса с func_fill_body
+			F_BODY[$cur_fname]="${F_BODY[$cur_fname]:-}"
 			continue
 		fi
 		if [[ "$line" == '}' ]]; then
