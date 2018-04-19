@@ -14,7 +14,7 @@ sys::arg_parse "$@"
 if [ "${ARG_CHECKLOG:-}" != "" ]; then
 	if ! grep -m 10 "InnoDB: Cleaning up trx with\|crashing.html\|forcing-innodb-recovery.html\
 		\|Attempting backtrace" "${ARG_CHECKLOG}"; then
-		echo 'LogFile=${ARG_CHECKLOG} is good, skip repair'
+		echo "LogFile=${ARG_CHECKLOG} is good, skip repair"
 		exit 0
 	fi
 fi
