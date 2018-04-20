@@ -16,8 +16,6 @@ if [ "${ARG_CHECKLOG:-}" != "" ]; then
 		\|Attempting backtrace" "${ARG_CHECKLOG}"; then
 		echo "LogFile=${ARG_CHECKLOG} is good, skip repair"
 		exit 0
-	else
-		mv "${ARG_CHECKLOG}" "${ARG_CHECKLOG}.bad.$(date +%s)"
 	fi
 fi
 
@@ -38,6 +36,10 @@ if ! mysqldump --user=$ARG_USER --host="$ARG_HOST" --password="$ARG_PASSWORD" \
 fi
 
 /etc/init.d/mysqld stop
+if [ "${ARG_CHECKLOG:-}" != "" ]; then
+	mv "${ARG_CHECKLOG}" "${ARG_CHECKLOG}.bad.$(date +%s)"
+fi
+
 mv /var/lib/mysql /var/lib/mysql.before_repair.$(date +%s)
 /etc/init.d/mysqld start || true # пустой каталок, пишет что ошибка на самом деле нет
 
