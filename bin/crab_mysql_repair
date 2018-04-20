@@ -16,6 +16,8 @@ if [ "${ARG_CHECKLOG:-}" != "" ]; then
 		\|Attempting backtrace" "${ARG_CHECKLOG}"; then
 		echo "LogFile=${ARG_CHECKLOG} is good, skip repair"
 		exit 0
+	else
+		mv "${ARG_CHECKLOG}" "${ARG_CHECKLOG}.bad.$(date +%s)"
 	fi
 fi
 
