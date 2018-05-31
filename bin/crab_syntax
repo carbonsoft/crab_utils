@@ -408,7 +408,7 @@ strongbash017(){
 }
 
 strongbash018(){
-	egrep -n  "^[$__SPACE]*[^#$__SPACE]+.*[^ 0-9)&>$__SPACE]>[ ]*+[^ \$\"'[]+"  "$F" \
+	egrep -n  "^[$__SPACE]*[^#$__SPACE]+.*[^ 0-9)&>}$__SPACE]>[ ]*+[^ \$\"'[]+"  "$F" \
 		&& echo_error 'strongbash018 поставьте пробел перед "text >oo"'
 	return 0
 }
