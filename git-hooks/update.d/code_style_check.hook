@@ -1,0 +1,341 @@
+#!/bin/bash
+
+set -eu
+
+echo "$0 $@ [$$] START" >&2
+
+# Magic check disabling
+if [ -f /etc/git_secure_salt ]; then
+	MAGIC_SALT=$(</etc/git_secure_salt)  # или сделать конфиг.
+else
+	MAGIC_SALT='salt'
+fi
+read -r MAGIC_FORCE_STR tmp_tail < <(echo "${MAGIC_SALT}$(date +%Y%m%d)" | md5sum)
+
+# echo "Hook params $*"
+# API git хуков подразумевает 3 параметра:
+if [ "${1:-}" = "--help" ] || [ $# != 3 ]; then
+	echo "Info: Утилита проверки новых и новых изменных файлов на syntax и тп"
+	echo "Usage: copy $0 to server git_hook dir"
+	echo "Example: ( cd git_dir && $0 refname old_commit new_commit; )"
+	echo "Today Hash: ${MAGIC_FORCE_STR}"
+	exit 1
+fi
+
+
+restore_filename() {
+	set -e
+	# В некоторых случаях, гит помещает имена файлов в кавычки и использует внутри экранирование.
+	# Например такое встречается, если в именах есть UTF или кавычки.
+	# К счастью существует команда printf, которая делает обратное преобразование.
+	local filename="$1"
+
+	if [ "${filename:0:1}" == \" ]; then
+		# Если первый символ имени - кавычка, то это наш случай, нужно деколировать имя.
+		# Уберём обрамляющие кавычки
+		filename="${filename%\"}"
+		filename="${filename#\"}"
+
+		printf "$filename"
+	else
+		echo "$filename"
+	fi
+	return 0
+}
+
+check_file_ext() {
+	set -e
+	# Вернём "skip" для файлов без кода.
+	# Будем пропускать файлы, которые могут быть большие и при этом не являться кодом.
+	# Проверяем рассширение, заведомо не bash - пропускаем.
+	local file="$1"
+	local file_base="${file##*/}"
+	local file_ext="${file_base##*.}"
+	file_ext="${file_ext//\"/}"
+	[[ ${1} != *.* ]] && file_ext=""
+	case "$file_ext" in
+	""|sh|py|c|h|cc|cpp|php)
+		echo "ext=$file_ext"
+		;;
+	*)
+		echo skip
+		;;
+	esac
+	return 0
+}
+check_file_size() {
+	set -e
+	# Вернём "skip" для файлов без кода.
+	# Будем пропускать файлы, которые могут быть большие и при этом не являться кодом.
+	# Проверим размер, если больше 1мб, то пропускаем.
+	local file="$1"
+	local commit="$2"
+	local ls_info ls_file any_tail ls_mode ls_type ls_sha ls_size ls_info_tail
+	# Получим размер файла от гит.
+	# формат вывода: man git-ls-tree
+	# <mode> SP <type> SP <object> SP <object size> TAB <file>
+	# По факту пробелов мржет быть несколько.
+	git ls-tree -l "$commit" -- "$file" > $TMP_WORK_DIR/ls-tree
+	while IFS=$'\t' read -r ls_info ls_file any_tail; do
+		if [ "$ls_file" = "$file" ]; then
+			read -r ls_mode ls_type ls_sha ls_size ls_info_tail <<<$ls_info
+			# ls_type == blob
+			if (( ls_size > 1000000 )); then
+				echo skip
+				break
+			fi;
+		fi
+	done < $TMP_WORK_DIR/ls-tree
+	return 0
+}
+
+
+store_success_file() {
+	# Сохраним успешно проверенные файлы для будущих свершений.
+	local file="$1"
+	local cwd="$(pwd)"
+	local repo_name="${cwd##*/}"
+	local store_dir="$STORE_SUCCESS_DIR/$repo_name"
+
+	if [ ! -d "$store_dir" ]; then
+		mkdir -p "$store_dir"
+	fi
+	# /./ нужна для rsync, чтобы он корректно создал структуру путей.
+	rsync -aR "$TMP_NEW_WORK_DIR/./$file" "$store_dir"
+	return 0
+}
+
+
+get_file_type() {
+	set -e
+	# Определим тип файла. Вернём в stdout
+	# Возвращаемый тип, должен поддерживаться crab_syntax
+	# Возвращаем только те типы, которые надо проверять.
+	local file="$1"
+	local file_type file_mime_type
+
+	file_mime_type=$(file -bi "$file")
+
+	case "$file_mime_type" in
+	text/x-shellscript*)
+		echo bash
+		;;
+# 	text/x-python*)
+# 		echo python
+# 		;;
+	esac
+	return 0
+}
+
+
+check_file() {
+	# Проверка codestyle
+	local file="$1"
+	local file_type="$2"
+
+	# "Умная" проверка:
+	# если файла не было в репозитории раньше, то он новый и обязан пройти полную проверку.
+	# Если файл был, то он мог проходить проверку, а мог не проходить.
+	# Если старый или новый файлы соответствует базовым правилам карбон,
+	#   то тогда делаем полный чек.
+	# Иначе считаем файл legacy и не соответствующим правилам карбон.
+	#   Молча закрывая глаза на legacy.
+	if [ ! -f "$TMP_OLD_WORK_DIR/$file" ] \
+		|| crab_syntax --maybe "$TMP_OLD_WORK_DIR/$file" "$file_type" \
+		&> "$TMP_OLD_WORK_DIR/${file}.crab_maybe" \
+		|| crab_syntax --maybe "$TMP_NEW_WORK_DIR/$file" "$file_type" \
+		&> "$TMP_NEW_WORK_DIR/${file}.crab_maybe"; then
+
+		echo "$MYNAME: --- crab_syntax $TMP_NEW_WORK_DIR/$file $file_type ---"
+		if crab_syntax "$TMP_NEW_WORK_DIR/$file" "$file_type"; then
+			store_success_file "$file"
+		else
+			echo "$MYNAME: --- check failed ---"
+			CHECK_ERR_COUNT=$(($CHECK_ERR_COUNT+1))
+		fi
+	fi
+	return 0
+}
+
+
+git_checkout() {
+	# Считаем, что checkout может дать ошибку, если файла уже нет в репе.
+	# И это нормальная ситуация.
+	local commit="$1"
+	local file="$2"
+	local dir="$3"
+
+	if ! git --work-tree=$dir checkout $commit -- "$file" \
+		2> $TMP_WORK_DIR/git_checkout_stderr; then
+
+		if ! grep -qm1 'error: pathspec .* did not match any file' \
+			$TMP_WORK_DIR/git_checkout_stderr; then
+
+			echo "git checkout error: $(<$TMP_WORK_DIR/git_checkout_stderr)" >&2
+			return 1
+		fi
+	fi
+	return 0
+}
+
+
+find_latest_old_commit() {
+	set -e
+	# Иногда гит не может нам дать "старый"(уже проверенный) коммит.
+	# И нам нужно его найти самостоятельно.
+	# Например, для новых веток.
+	# Готового инструмента для этого нет.
+	#
+	# Лучшее до чего додумался, идти вниз по истории,
+	# и для каждого коммита смотреть содержащие его ветки.
+	# Если есть ветки содержащие его, значит этот коммит уже был на сервере.
+	# Этот способ не гарантирует полной валидности.
+	# Но нам надо где-то остановится.
+	# Слишком далеко заходить тоже не будем.
+	# Ограничим глубину поиска, если ничего не найдём,
+	# вернём последний коммит из выборки истории.
+	local last_commit="$1"
+	local commit
+	local branch_list
+	local deep=50
+
+	for commit in $(git log -n $deep --pretty=format:%H "$last_commit"); do
+		# echo "Check for old $commit" >&2
+		branch_list="$(git branch --contains "$commit")"
+		# echo "Branch list $branch_list" >&2
+		if [ -n "$branch_list" ]; then
+			break
+		fi
+	done
+	echo "$commit"
+	# echo "Select $commit" >&2
+	return 0
+}
+
+
+MYNAME=${0##*/}
+
+ref=$1
+old_commit=$2
+new_commit=$3
+
+CWD="$(pwd)"
+REPO_NAME="${CWD##*/}"
+
+if [[ "$REPO_NAME" == *autogit* ]]; then
+	echo "Repo $REPO_NAME  is autogit - skip check."
+	echo "$0 $@ [$$] SUCCESS" >&2
+	exit 0
+fi
+# Не проверять репозитории где есть файл-флаг.
+if [ -f code_style_check.skip ]; then
+	echo "Repo $REPO_NAME exist code_style_check.skip - skip check."
+	echo "$0 $@ [$$] SUCCESS" >&2
+	exit 0
+fi
+
+# Первый пуш для ветки выглядит .../update refs/heads/new \
+#    0000000000000000000000000000000000000000 017dff097448778fb8b3f6da23ee2c7447bd1a69
+# Это приведёт к полной перепроверке всех файлов в репе причём в статусе "новый"...
+# Можно первые пуши не проверять, но это дырень.
+# Есть компромиссный вариант проверять в таких ситуация последние N коммитов.
+# Можно поискать пересечение с уже запушенными ветками и работать от общего коммита...
+# Пока больше ничего не приходит в голову.
+
+# Остановился на варианте, что искать "старый" коммит будет функция find_latest_old_commit
+ZCOMMIT=0000000000000000000000000000000000000000
+
+# Удаление ветки. нам тут делать нечего.
+if [ "$new_commit" == $ZCOMMIT ]; then
+	echo "$0 $@ [$$] SUCCESS" >&2
+	exit 0
+fi
+
+# Новая ветка
+if [ "$old_commit" == $ZCOMMIT ]; then
+	old_commit=$(find_latest_old_commit $new_commit)
+fi
+
+if [ -n "$old_commit" ]; then
+	check_range="${old_commit}..${new_commit}"
+else
+	# echo "--- Check full history! ---"
+	check_range=$new_commit
+fi
+# echo "check_range=$check_range"
+
+# skip strongbash034
+if git log -n 1 $new_commit | grep -qm1 $MAGIC_FORCE_STR; then
+	echo "$MYNAME: Force commit push! Skip check."
+	echo "$0 $@ [$$] SUCCESS" >&2
+	exit 0
+fi
+
+CHECK_ERR_COUNT=0  # счётчик файлов не прошедших проверку.
+
+TMP_WORK_DIR=/tmp/${MYNAME}.$$  # may be trap on conflict.
+[ -d "$TMP_WORK_DIR" ] && { echo "Error: $TMP_WORK_DIR already exists"; exit 1; }
+TMP_NEW_WORK_DIR=$TMP_WORK_DIR/new
+TMP_OLD_WORK_DIR=$TMP_WORK_DIR/old
+STORE_SUCCESS_DIR=/home/code_style_check_store
+
+mkdir -p $TMP_WORK_DIR $TMP_NEW_WORK_DIR $TMP_OLD_WORK_DIR $STORE_SUCCESS_DIR
+
+# История изменения файлов между актуальной версией ветки(old) и запушенной(new).
+git log $'--pretty=format:commit\t%H' --name-status --reverse \
+	$check_range > $TMP_WORK_DIR/git_log
+while IFS=$'\t' read -r mode file any_tail; do
+	# if [ "$mode" == "commit" ]; then
+	# 	commit=$file
+	# 	echo "Check commit $commit"
+	# elif
+
+	# D - удалённые, A - новые, M - изменённые файлы.
+	if [ "$mode" == "A" ] || [ "$mode" == "M" ]; then
+		# осв: скипаем расширеня в первую очередь тк это быстрей всего
+		ret=$(check_file_ext "$file")
+		[ "$ret" = skip ] && continue
+
+		# git иногда экранирует имена. Получим чистое имя.
+		file=$(restore_filename "$file")
+		# Если файл есть во временной папке, значит мы его уже проверили.
+		if [ -f $TMP_NEW_WORK_DIR/"$file" ]; then
+			echo "$MYNAME: Already check file: $file, skip."
+			continue
+		fi
+		ret=$(check_file_size "$file" "$new_commit")
+		[ "$ret" = skip ] && continue
+
+		git_checkout $new_commit "$file" $TMP_NEW_WORK_DIR
+		git_checkout $old_commit "$file" $TMP_OLD_WORK_DIR
+
+		## Если файла в репе уже нет, то и проверять нечего.
+		if [ ! -f $TMP_NEW_WORK_DIR/"$file" ]; then
+			continue
+		fi
+
+		file_type=$(get_file_type $TMP_NEW_WORK_DIR/"$file")
+		# Если тип не поддерживается нами, то не проверяем.
+		if [ -z "$file_type" ]; then
+			continue
+		fi
+
+		echo "$MYNAME: check $file_type file $file"
+		check_file "$file" "$file_type"
+	fi  # if new_file
+done < $TMP_WORK_DIR/git_log
+
+rm -r --one-file-system $TMP_WORK_DIR
+
+if [ $CHECK_ERR_COUNT != 0 ]; then
+	echo "RTFM http://opencarbon.ru/соглашения_кода:strongbash"
+	echo "or GOTO admin."
+	echo "Если вы уверены, что указанные файлы не должны соответствовать краб,"
+	echo "тогда добавьте в сообщение последнего коммита ADMIN_MERGE"
+	echo "Администратор примет ваши изменения в ручном режиме."
+	echo "$0 $@ [$$] CHECK FAILED, $CHECK_ERR_COUNT files with errors." >&2
+	exit 1
+fi
+
+echo "$0 $@ [$$] SUCCESS" >&2
+exit 0

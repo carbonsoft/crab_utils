@@ -7,10 +7,16 @@ echo "$0 $@ [$$] START" >&2
 ### strongbash008 Обязательно использовать #!/bin/bash даже в include'
 
 ### strongbash002 Не установлен set -eu
-set -euEo pipefail
+set -eu
 
+### strongbash034_6 нельзя устанавливать set -o pipefail на весь файл"
+set -o p ipefail
+
+### strongbash032 --help Info должно быть в начале файла
 ### strongbash019
 sys::usage "$@"
+### --help Info: Проверяет скрипт на соглашение strongbash
+### --help Usage: crab_syntax file|dir [type]
 ### --help Example: crab_syntax test-crab_syntax.white
 
 ### strongbash001 Не выполнен crab_indent
@@ -32,10 +38,11 @@ fi
 ### strongbash005 $count_func!=$count_end_return
 ### В конце каждой функции должен быть return 0 или return $ret'
 FAIL005(){
+	local myret
 	[ 1 = 2 ] && return 1
 	echo yes
 	ret=0
-	return $ret
+	return $myret
 }
 
 FAIL005_1(){
@@ -149,101 +156,304 @@ FAIL014(){
 }
 
 ### strongbash015 Слишком большой линейный файл больше 64 строк, разбейте на функции
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
-echo 2
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
+echo 1
 
 ### strongbash016 Уберите конечные пробелы и tab
 echo yes
 echo yes
 
-### strongbash006  В конце каждого файла должен быть echo SUCCES
-echo S#U#C#C#E#S#S
+### strongbash017 длина строки больше $MAX_CHARS используйте перенос
+echo '11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111'
 
+### strongbash018 поставьте пробел перед "text >"
+echo test > /tmp/r.$$
+
+
+### strongbash021_1 Запрещено удалять tmp в trap E XIT.
+trap 'echo /tmp/eee' 1 2 4
+
+### strongbash021_2 Запрещено удалять tmp в trap E XIT.
+tfdir=/tmp/tf
+trap "echo $tf" 1
+rm -f $tfdir
+
+### strongbash021_3 Запрещено удалять tmp в trap E XIT.
+trap "__exit1" 1
+__exit1(){
+	echo /tmp/eee
+	return 0
+}
+
+### strongbash021_4 Запрещено удалять tmp в trap E XIT.
+trap "__exit2" 1
+__exit2(){
+	echo "$TF"
+	return 0
+}
+
+### strongbash021_5 Не рекомендуется использовать trap E XIT.
+trap _exit 1
+
+### strongbash023_1 Нужно всегда использовать read -r f1 f2
+### strongbash023_2 А для чтения целой строки while IFS='' read -r line; do
+read -r f1 f2 < /tmp/myfile
+
+while IFS= read -r line; do
+	echo "$f"
+done < /tmp/myfile
+
+
+### strongbash024 1. Запрещено rm -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
+### strongbash024 2. rm -rf  всегда с -one-file-system
+dir="/tmp/1231231313123123123123123"
+### strongbash024_1
+rm -rf -one-file-system "$dir"
+rm -rf -one-file-system "$dir"
+
+### strongbash024_2
+rm -rf -one-file-system "$dir"
+
+### strongbash024_3
+rm -rf -one-file-system "$dir"
+rm -rf -one-file-system "$dir"
+
+### strongbash024_4
+rm -rf -one-file-system "$dir"
+
+
+
+
+### strongbash025 «do» и «then» НЕ делаем c новой строки
+if true; then
+	echo true
+fi
+
+for 1 in 1; do
+	echo true
+done
+
+### strongbash026 Нельзя использовать голые скобки для assert и тп [ a = b ]
+[ 1 = 2 ] && { echo error1; exit 1; }
+
+
+
+### strongbash024 1. Запрещено rm -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
+### strongbash024 2. rm -rf  всегда с -one-file-system
+rm -rf -one-file-system "$dir"
+rm -rf -one-file-system "/tmp/mydir786878/*"
+
+### strongbash023  1. Нужно всегда использовать read -r f1 f2
+### strongbash023  2. А для чтения целой строки while IFS='' read -r line; do
+read -r f1 f2 < /tmp/myfile
+
+while IFS='' read -r line; do
+	echo "$f"
+done < /tmp/myfile
+
+### strongbash022_1 Утилиты должны удалять за собой временные файлы
+tmpf="/tmp/rrr.$$"
+rm -f "$tmpf"
+
+### strongbash022_2 Утилиты должны удалять за собой временные файлы
+tmpf1=$(mktemp /tmp/rrr.XXXX )
+rm -f "$tmpf1"
+
+### strongbash021 Запрещено удалять tmp в trap EXI T, но lock можно
+TF=/var/lock/tt
+trap "__exit2" INT
+__exit2(){
+	rm -f "$TF"
+	return 0
+}
+
+### strongbash020 Запрещены функции LOG в утилитах
+changelog(){
+	echo ""
+	return 0
+}
+
+### strongbash027 нельзя использовать конструкции вида [ a = b ] || cmd1
+### кроме утвержденного сахара
+[ a = b ] && cmd2 || cmd1
+
+### strongbash028
+### Нельзя использовать cmd1 || cmd2 || cmd3
+### лучше проверять окружение и вызвать сразу нужное If centos if ubintu if dir
+cmd1 && cmd2 || cmd3
+
+### strongbash031
+cat > /tmp/tmptest <<EOF
+/*
+!/.gitignore
+!/etc
+EOF
+
+### strongbash029 Если мы берем stdout от функции мы обязаны прописать
+### в первой строке set -e тк он снимается
+FAIL029(){
+	set -e
+	echo TRUE
+	return 0
+}
+ret=$( FAIL029 )
+
+### strongbash030_1 strongbash030_2 strongbash030_3
+### нельзя вызывать функцию внутри if fname и fname&& и fname||
+FAIL030(){
+	set -e
+	echo TRUE
+	return 0
+}
+FAIL030_ret="$( FAIL030 )"
+[ "$FAIL030_ret" = 'TRUE' ] && echo TRUE
+ls && echo TRUE
+if ls; then
+	echo TRUE
+fi
+
+### strongbash031 strongbash031 нельзя использовать -EOF, используйте обычный EOF
+cat > /tmp/tmptest <<EOF
+/*
+!/.gitignore
+!/etc
+EOF
+
+### strongbash032 --help Info должно быть в начале файла
+
+### strongbash033_1 глобальная переменная $var должна быть в верхнем регистре
+GLOBALVAR1=123
+FAIL033_1(){
+	echo $GLOBALVAR1
+	return 0
+}
+
+### strongbash033_2 локальные переменные должны быть объявлены как local
+### или для внешних, как declare в начале файла
+declare $RR
+FAIL033_2(){
+	local mylocalvar=1
+	echo $mylocalvar
+	echo $RR
+	return 0
+}
+
+### strongbash033_3 имя локальной переменной должно быть в нижнем регистре
+FAIL033_3(){
+	local lll=0
+	echo lll
+	return 0
+}
+
+### strongbash034
+### strongbash034_1 Будьте осторожны, использование grep -q grep -m 1 head tail
+### вместе с set -o pipefail
+### приведет к разрыву левой части pipe и остановке команды \"$cmd\"
+### Если нормальное завершение этой команды необязательно
+
+set -o pipefail
+ip1="$( ip )"
+ip1="$( echo $ip | grep -m 1 src )"
+set +o pipefail
+
+### strongbash034_2 set -o pipefail не работает в if $cmd; then
+set -o pipefail
+ip1="$( ip | grep src )"
+set +o pipefail
+if [ "$ip1" != "" ]; then
+	echo eee
+fi
+
+### strongbash034_3 Команда \"$cmd\" используется внутри pipe
+set -o pipefail
+ip1="$( ip | grep src)"
+set +o pipefail
+
+### strongbash034_4 необходимо включить set -o pipefail для ( code )| cmd"
+set -o pipefail
+(
+	ls
+) | sort
+set +o pipefail
+
+### strongbash034_5 все set -o pipefail нужно отключать после pipe set +o pipefail"
+set -o pipefail
+ls | grep a
+set +o pipefail
+
+### strongbash034_6 нельзя устанавливать set -o pipefail на весь файл"
+### см начало файла
+
+
+### strongbash035 нельзя использовать присвоение внутри if a\=\$(cmd)"
+cmd="$( ip | grep src)" || true
+if [ $cmd = '' ]; then
+	echo $cmd
+fi
+
+### strongbash006  В конце каждого файла должен быть echo SUCCES-S
 ### strongbash007  В конце каждого файла должен быть exit 0
+
 echo "$0 $@ [$$] SUCCESS" >&2
 exit 0

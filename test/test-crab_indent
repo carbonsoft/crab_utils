@@ -4,6 +4,9 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Info: тестирование test-crab_indent через
+### --help /opt/crab/crab_utils/test/test-crab_indent.white
+### --help Usage:
 ### --help Example: test-crab_indent
 
 
@@ -11,12 +14,14 @@ cp -a /opt/crab/crab_utils/test/test-crab_indent.white /tmp/test-crab_indent.whi
 
 failed=FALSE
 /opt/crab/crab_utils/bin/crab_indent /tmp/test-crab_indent.white.$$
-diff -U 10 /opt/crab/crab_utils/test/test-crab_indent.white \
-	/tmp/test-crab_indent.white.$$ || failed=TRUE
+if ! diff -U 10 /opt/crab/crab_utils/test/test-crab_indent.white \
+	/tmp/test-crab_indent.white.$$; then
+	failed=TRUE
+fi
 rm -f /tmp/test-crab_indent.white.$$
 
 if [ $failed = TRUE ]; then
-	echo TEST $0 /opt/crab/crab_utils/test/test-crab_indent.white [ FAILED ]
+	echo "TEST $0 /opt/crab/crab_utils/test/test-crab_indent.white [ FAILED ]"
 	exit 1
 fi
 

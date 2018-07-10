@@ -2,10 +2,50 @@
 
 echo "$0 $@ [$$] START" >&2
 
-set -euEo pipefail
+set -eu
+# set -eu
 
 sys::usage "$@"
+### --help Info:
+### --help Usage:
 ### --help Example: test-crab_indent.white
+
+declare -a servers=(
+'https://example.com'
+'http://example.com'
+'http://127.0.0.1/cache/'
+)
+
+changelog1(){
+	echo ""
+	return 0
+}
+
+changelog2(){
+	echo "qaaa\"qqqq"
+	return 0
+}
+
+changelog3(){
+	echo ''
+	return 0
+}
+
+changelog4(){
+	echo 'qqq'
+	return 0
+}
+
+
+
+tmp1(){
+	echo 1
+	return 0
+}
+tmp1(){
+	echo 1
+	return 0
+}
 
 
 echo test
@@ -49,7 +89,7 @@ while false; do
 	fi
 	echo true
 done
-cat | grep . | while read t; do
+cat | grep . | while read -r t; do
 	echo qwe
 done
 
@@ -59,13 +99,13 @@ function test1(){
 }
 
 cat /proc/meminfo \
-	| grep . | while read t; do
+	| grep . | while read -r t; do
 		echo $t
 	done
 
 cat /proc/meminfo \
 	| grep . \
-	| while read t; do
+	| while read -r t; do
 		echo $t
 	done
 
@@ -74,8 +114,7 @@ cat /proc/meminfo \
 		echo test
 	)
 }
-
-
+set -o pipefail
 (
 	set -x; PS4=''; . /node/bin/__vm_config;
 	set +x;
@@ -88,7 +127,7 @@ cat /proc/meminfo \
 	| sed 's/\(eval \)*\('"'"'\)*\([^ ]*\)[=].*/\3/' | sort | uniq \
 	| (
 		. /node/bin/__vm_config
-		while read val_name; do
+		while read -r val_name; do
 			my_continue=0
 			for conf in $VM_DIR/*.conf /node/node_id.conf; do
 				if grep -qm1 "^${val_name}=" "$conf"; then
@@ -116,7 +155,7 @@ cat /proc/meminfo \
 
 		done
 	) | sort
-
+set +o pipefail
 __node(){
 	shift
 	case $1 in
@@ -140,7 +179,7 @@ __node(){
 	# indent comment
 #}
 
-{
+f1(){
 	echo "1
 2
 3
@@ -150,9 +189,10 @@ __node(){
 7
 "
 	echo 1
+	return 0
 }
 
-{
+f2(){
 	echo '1
 2
 3
@@ -162,6 +202,147 @@ __node(){
 7
 '
 	echo 1
+	return 0
+}
+
+f3(){
+	echo "1
+2
+3
+4
+5
+6
+7"
+	echo 1
+	return 0
+}
+
+f4(){
+	echo '1
+2
+3
+4
+5
+6
+7'
+	echo 1
+	return 0
+}
+
+f5(){
+	cmd1 \
+"1
+2
+ 3
+4
+ 5
+6
+7"
+	echo 1
+	return 0
+}
+
+f6(){
+	cmd1 \
+'1
+2
+ 3
+4
+ 5
+6
+ 7'
+	echo 1
+	return 0
+}
+
+f7(){
+	cmd1 \
+"1
+2
+ 3
+4
+ 5
+6
+7
+"
+	echo 1
+	return 0
+}
+
+f8(){
+	cmd1 \
+'1
+2
+ 3
+4
+ 5
+6
+ 7
+'
+	echo 1
+	return 0
+}
+
+if true; then
+# 1
+# 2
+	cmd
+fi
+
+if true; then
+# test 3
+	cat >tmp <<EOF
+# 1
+test1
+# 2
+test2
+test3
+EOF
+	cmd2
+fi
+if [ "${1:-}" = "save" ]; then
+	check_and_set_dir "${2:-}"
+	if [ -n "${3:-}" ]; then
+		USER_MSG="$3"
+	fi
+	autogit_sync
+
+elif [ "${1:-}" = "install" ]; then
+	check_and_set_dir "${2:-}"
+	ARG_ORIGIN="${3:-}"
+	autogit_install
+
+# Для совместимости со старыми версиями, $0 /dir - эквивалентно $0 save /dir
+elif [ ! -z "${1:-}" -a -d "${1:-}" ]; then
+	check_and_set_dir "${1:-}"
+	if [ -n "${2:-}" ]; then
+		USER_MSG="$2"
+	fi
+	autogit_sync
+
+else
+	echo -e "\nUnknown command: ${1:-}\n"
+	usage
+	exit 1
+fi
+get_file_type() {
+	set -e
+	# Определим тип файла. Вернём в stdout
+	# Возвращаемый тип, должен поддерживаться crab_syntax
+	# Возвращаем только те типы, которые надо проверять.
+	local file="$1"
+	local file_type file_mime_type
+	file_mime_type=$(file -bi "$file")
+
+	case "$file_mime_type" in
+	text/x-shellscript*)
+		echo bash
+		;;
+# 	text/x-python*)
+# 		echo python
+# 		;;
+	esac
+	return 0
 }
 
 echo "$0 $@ [$$] SUCCESS" >&2

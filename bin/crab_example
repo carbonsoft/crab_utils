@@ -5,34 +5,39 @@ __SILENT=TRUE
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 sys::usage "$@"
-### --help утилита поиска примеров http://www.opencarbon.ru/example
-### --help и можно свои добавлять списки "$HOME/.carbon_example_custom.urls"
-### --help Usage:
-### --help Example: crab_example sed  - примеры sed
-### --help Example: crab_example bash string - примеры bash подпримеры работы со строками
-### --help Example: crab_example update - обновить кеш всех списков
+# --help Info:
+# --help Утилита поиска примеров http://www.opencarbon.ru/example
+# --help и можно свои добавлять списки "$HOME/.carbon_example_custom.urls"
+# --help Usage:
+# --help Example: crab_example sed  - примеры sed
+# --help Example: crab_example bash string - примеры bash подпримеры работы со строками
+# --help Example: crab_example update - обновить кеш всех списков
 
 
 
-if [ "${1}" == update ]; then
+if [ "${1}" == "update" ]; then
 
 	echo 0 > /tmp/.carbon_example/lastupdate
 fi
 
 update(){
-	wget http://opencarbon.ru/example:example_index -O /tmp/example_index.$$ &>/dev/null
-	example_pages=$( grep href /tmp/example_index.$$ | grep example:example \
+	local page url example_pages
+	wget http://opencarbon.ru/example:example_index -O /tmp/crab_example_index.$$ &>/dev/null
+	example_pages=$( grep href /tmp/crab_example_index.$$ | grep example:example \
 		| grep 'class="wikilink1"' | grep -v start \
 		| grep -v example_index | sed -n 's/.*href="\/\([^"]*\).*/\1/p' )
-	rm -f /tmp/example_index.$$
+	rm -f /tmp/crab_example_index.$$
 	for page in $example_pages; do
 		echo "http://www.opencarbon.ru/?do=export_raw&id=${page}"
 	done > "$HOME/.carbon_example.urls"
 	touch "$HOME/.carbon_example_custom.urls"
 	rm -f /tmp/.carbon_example/*
 	for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
-		wget $url -O - 2>/dev/null \
-			| grep -v '^<code ' | grep -v '^</code>' > /tmp/.carbon_example/${url//\//_}
+		wget $url -O /tmp/crab_example_wget_out.$$ 2>/dev/null
+		cat /tmp/crab_example_wget_out.$$ \
+			| grep -v '^<code ' | grep -v '^</code>' \
+			| sed 's/===.*//' > "/tmp/.carbon_example/${url//\//_}"
+		rm -f /tmp/crab_example_wget_out.$$
 	done
 	date +%s > /tmp/.carbon_example/lastupdate
 	return 0
@@ -41,7 +46,7 @@ update(){
 mkdir -p /tmp/.carbon_example
 touch /tmp/.carbon_example/lastupdate
 
-if [ "${1}" == update ]; then
+if [ "${1}" == "update" ]; then
 	update
 fi
 
@@ -52,12 +57,13 @@ fi
 >/tmp/crab_example.$$
 
 search(){
-	words1="$1"
-	words2="$2"
+	local words1="$1"
+	local words2="$2"
+	local url line showline buff url
 	for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
 		showline=FALSE
 		buff=""
-		while read -r line; do
+		while IFS='' read -r line; do
 			shopt -s nocasematch
 			if [[ "$line" == *"${words1}"* ]]; then
 				if [ "${words2}" = "" ] || [[ "$line" == *"${words2}"* ]]; then

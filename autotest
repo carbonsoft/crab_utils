@@ -1,20 +1,27 @@
 #!/bin/bash
+##
 
 set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
+### --help Info: запуск тестов foreach /opt/crab/crab_utils/test/test-*
+### --help Usage:
 ### --help Example: autotest
 
 err=0
 
+if ! /opt/crab/crab_utils/bin/crab_syntax /opt/crab/crab_utils; then
+	err=$((err+1))
+fi
 for test in /opt/crab/crab_utils/test/test-*; do
 	[ ! -x $test ] && continue
 	echo
-	$test || err=$((err+1))
+	if ! $test; then
+		err=$((err+1))
+	fi
 done
 
-/opt/crab/crab_utils/bin/crab_syntax /opt/crab/crab_utils || err=$((err+1))
 
 [ $err != 0 ] && exit 1
 

@@ -1,0 +1,81 @@
+#!/bin/bash
+
+set -euE
+# echo "$0 $@ [$$] START" >&2
+
+if [ "${1:---help}" = '--help' ]; then
+	echo "Info: Утилита кэширования мастер ssh соединения"
+	echo "Аналог опции ControlPersist(нет в centos6) и в теории более надежный"
+	echo "Usage: ssh_cache [ssh_opt] [user@]host sleep_sec"
+	echo 'Example: ssh_cache -i my_rsa root@example.com 10000'
+	exit 0
+fi
+
+prepare_arg(){
+	local argc=$#
+	SSH_OPT=''
+	for((i=0;i<$argc-2;i++)); do
+		SSH_OPT="$SSH_OPT $1"
+		shift
+	done
+	DST=$1
+	[ -z "$USER" ] && USER="root"
+	[[ "$DST" != *@* ]] && DST="$USER@$DST"
+	shift
+	SEC=$1
+	SSH_PORT=22
+	if [[ "$SSH_OPT" == *'-p'* ]]; then
+		SSH_PORT=${SSH_OPT##*-p }
+		SSH_PORT=${SSH_PORT##*-p}
+		SSH_PORT=${SSH_PORT%% *}
+	fi
+
+	[ -z "${HOME:-}" ] && $HOME="/tmp/"
+	return 0
+}
+prepare_arg "$@"
+
+ControlPath="$HOME/ssh_cache_${DST}_${SSH_PORT}"
+old_pid=''
+old_cmd=''
+[ -f "${ControlPath}.pid" ] && read -r old_pid < "${ControlPath}.pid"
+
+# ! not work read -r old_cmd < "/proc/$old_pid/cmdline"
+[ -f "/proc/$old_pid/cmdline" ] && old_cmd="$(< /proc/$old_pid/cmdline)"
+
+if [[ "$old_cmd" == *"ControlMaster=yes$DST"* ]] && [ -S "$ControlPath" ]; then
+	exit 0
+fi
+if ! ps x | grep -v grep | grep ControlMaster=yes | grep "${SSH_OPT//-/[-]}" | grep -qm1 "$DST" \
+	|| [ ! -S "$ControlPath" ] ; then
+	rm -f "$ControlPath"
+	if ! fgrep -qm1 '~/ssh_cache_%r@%h_%p' /etc/ssh/ssh_config; then
+		echo 'Error /etc/ssh/ssh_config. Plz add: ControlPath ~/ssh_cache_%r@%h_%p'
+		exit 1
+	fi
+	ssh $SSH_OPT \
+		-o 'BatchMode=yes' \
+		-o 'ServerAliveInterval=61'\
+		-o 'ControlMaster=yes' ${DST} 'exit 0'
+
+	setsid ssh -n -T $SSH_OPT \
+		-o 'BatchMode=yes' \
+		-o 'ServerAliveInterval=61'\
+		-o 'ControlMaster=yes' ${DST} \
+		sleep $SEC </dev/null &>>"${ControlPath}.log" & disown -a
+	LANG=C sleep 0.3
+	# мы должны обязательно дождаться иначе следующий ssh сломает сокет и кеширования не будет
+	for tt in 1 2 3 4 5; do
+		[ -S "$ControlPath" ] && break
+		sleep 1
+	done
+	[ ! -S "$ControlPath" ] && exit 1
+	read -r new_pid t < <( ps x | grep -v grep | grep ControlMaster=yes \
+		| grep "${SSH_OPT//-/[-]}" | grep -m1 "$DST" || true )
+	echo $new_pid > "${ControlPath}.pid"
+	# echo $ControlPath $new_pid
+fi
+
+## test commit
+# echo "$0 $@ [$$] SUCCESS" >&2
+exit 0

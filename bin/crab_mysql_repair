@@ -1,0 +1,57 @@
+#!/bin/bash
+
+set -eu
+. /opt/crab/crab_utils/bin/::carbon.sys
+sys::usage "$@"
+### --help Info: восстановление всхех БД mysql методом бекап ресторе
+### --help Usage:
+### --help Example: crab_mysql_repair --user=root --password=mypass --host=localhost
+### --help Example: crab_mysql_repair --checklog=/var/log/mysqld.log \
+### --help                --user=root --password=mypass --host=localhost
+
+sys::arg_parse "$@"
+
+if [ "${ARG_CHECKLOG:-}" != "" ]; then
+	if ! grep -m 10 "InnoDB: Cleaning up trx with\|crashing.html\|forcing-innodb-recovery.html\
+		\|Attempting backtrace" "${ARG_CHECKLOG}"; then
+		echo "LogFile=${ARG_CHECKLOG} is good, skip repair"
+		exit 0
+	fi
+fi
+
+if ! mysqldump --user=$ARG_USER --host="$ARG_HOST" --password="$ARG_PASSWORD" \
+	--opt -c --databases --all-databases \
+	--skip-quick \
+	--add-drop-table --add-drop-database --skip-extended-insert \
+	--create-options --lock-all-tables >/tmp/mysqldump.$$.sql; then
+	# --single-transaction
+	/etc/init.d/mysqld stop
+	# нельзя mv /var/lib/mysql /var/lib/mysql.bad.$(date +%s)
+	echo 'cant create mysqldump'
+	echo 'plz set in /etc/my.cnf [mysqld]'
+	echo 'innodb_force_recovery from 1 to 6 and  skip-innodb_checksums = 1'
+	echo 'and use repair again'
+	echo 'after repair remove innodb_force_recovery and skip-innodb_checksums'
+	exit 1
+fi
+
+/etc/init.d/mysqld stop
+if [ "${ARG_CHECKLOG:-}" != "" ]; then
+	mv "${ARG_CHECKLOG}" "${ARG_CHECKLOG}.bad.$(date +%s)"
+fi
+
+mv /var/lib/mysql /var/lib/mysql.before_repair.$(date +%s)
+/etc/init.d/mysqld start || true # пустой каталок, пишет что ошибка на самом деле нет
+
+if ! pidof mysqld; then
+	echo "can't start mysqld"
+	exit 1
+fi
+
+/usr/bin/mysqladmin -u root password "$ARG_PASSWORD"
+/usr/bin/mysql -u root -p"$ARG_PASSWORD" </tmp/mysqldump.$$.sql
+rm -f /tmp/mysqldump.$$.sql
+# контрольная проверка
+/etc/init.d/mysqld stop
+/etc/init.d/mysqld start
+exit 0

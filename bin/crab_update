@@ -4,11 +4,15 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
-### --help Локальные изменения сохранятся во бекап каталоге /opt/crab.$$
-### --help Example: crab_update
+# --help Info: обновляет все краб пакеты /opt/crab/*
+# --help Info: создает symlink'и foreach /opt/crab/*/bin/crab_* /bin/crab_$name
+# --help Локальные изменения сохранятся в бекап каталоге /opt/crab.$$
+# --help Usage:
+# --help Example: crab_update
 
 create_symlink(){
 	set -eu
+	local f
 	for f in /opt/crab/*/bin/crab_*; do
 		[ -x "$f" ] && ln -fs "$f" /bin/${f##*/}
 	done
@@ -27,10 +31,16 @@ configure_mc(){
 }
 
 git_update(){
+	local repo
 	(
 		for repo in /opt/crab/*; do
 			[ ! -d "$repo/.git/" ] && continue
 			cd $repo
+			# skip strongbash034
+			if ! git branch  | grep '*' | grep -w 'master'; then
+				continue
+			fi
+			# skip strongbash034
 			if LANG=C git status | grep -qm1 modified; then
 				rsync -a /opt/crab/ /opt/crab.$$/
 				echo "all modified files moved to /opt/crab.$$/" >/opt/crab/README.$$

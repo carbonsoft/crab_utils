@@ -50,7 +50,8 @@ let s:indent_echo2 = -1
 let s:indent_slash = -1
 let s:indent_befor_skip = -1
 
-function GetShIndent()
+
+function GetShIndent0()
 	let prevnum = prevnonblank(v:lnum - 1)
 	if prevnum == 0
 		return 0
@@ -61,7 +62,6 @@ function GetShIndent()
 		prevprevnum = prevnum
 	endif
 
-	
 	" Add a 'shiftwidth' after if, while, else, case, until, for, function()
 	" Skip if the line also contains the closure for the above
 
@@ -71,20 +71,19 @@ function GetShIndent()
 	let prevline = getline(prevnum)
 	let prevprevind = indent(prevprevnum)
 	let prevprevline = getline(prevprevnum)
-	
-	if curline =~ '^#[^{}].*'
-		\ || curline =~ "^'.*"
-		\ || curline =~ '^".*'
-		if s:indent_befor_skip =~ -1
-			let s:indent_befor_skip = prevind
-		endif
-		return 0
-	endif
+
 	if s:indent_befor_skip != -1
 		let prevind = s:indent_befor_skip
-		let s:indent_befor_skip = -1
 	endif
-	if prevline =~ '.*[<][<]EOF.*' && prevline !~ '^\s*#[ #]'
+	if curline =~ '^\s*#[^{}].*' || curline =~ '^\s*#$'
+		let curline='# '
+	endif
+
+	if prevline =~ '^\s*#[^{}].*' || prevline =~ '^\s*#$'
+		let prevline='# '
+	endif
+
+	if prevline =~ '.*[<][<]EOF.*' && prevline !~ '^\s*#[ \t#]'
 		let s:indent_eof = prevind
 		return curind
 	endif
@@ -98,12 +97,17 @@ function GetShIndent()
 		return curind
 	endif
 
-	if prevline =~ 'echo "' && prevline !~ 'echo ".*"' && prevline !~ '^\s*#[ #]'
+	if curline =~ '^"[^"].*$' && curline !~ '^".*[^\\]".*$'
 		let s:indent_echo1 = prevind
 		return curind
 	endif
 
-	if s:indent_echo1 != -1  && ( prevline =~ '[^\\]"' || prevline =~ '^"' )
+	if prevline =~ 'echo "' && prevline !~ 'echo ""' && prevline !~ 'echo ".*[^\\]"' && prevline !~ '^\s*#[ \t#]'
+		let s:indent_echo1 = prevind
+		return curind
+	endif
+
+	if s:indent_echo1 != -1 && ( prevline =~ '^.*[^\\]"' || prevline =~ '^"$' )
 		let prevind = s:indent_echo1
 		let s:indent_echo1 = -1
 	endif
@@ -112,13 +116,17 @@ function GetShIndent()
 		return curind
 	endif
 
-
-	if prevline =~ "echo '" && prevline !~ "echo '.*'" && prevline !~ '^\s*#[ #]'
+	if curline =~ "^'[^'].*$" && curline !~ "^'.*'"
 		let s:indent_echo2 = prevind
 		return curind
 	endif
 
-	if s:indent_echo2 != -1  && ( prevline =~ "[^\\]'" || prevline =~ "^'" )
+	if prevline =~ "echo '" && prevline !~ "echo '.*'" && prevline !~ '^\s*#[ \t#]'
+		let s:indent_echo2 = prevind
+		return curind
+	endif
+
+	if s:indent_echo2 != -1  && ( prevline =~ "^[^'].*'" || prevline =~ "^'$" )
 		let prevind = s:indent_echo2
 		let s:indent_echo2 = -1
 	endif
@@ -131,13 +139,13 @@ function GetShIndent()
 	if prevline =~ '^\s*[ |]*\(if\|for\|while\|else\|elif\|until\)\>'
 				\ || prevline =~ '^.*[|][ ]while'
 				\ || (prevline =~ '^\s*case\>' && g:sh_indent_case_labels)
-				\ || prevline =~ '^\s*\<\k\+\>\s*()\s*{'
+				\ || prevline =~ '^\s*\S*\s*()\s*{$'
 				\ || prevline =~ '^\s*function\s*\<\k\+\>\s*()\s*{$'
 				\ || prevline =~ '^\s*{$'
 				\ || prevline =~ '^\s*#{$'
 				\ || prevline =~ '^\s*[^() \t]\{1,\})'
 				\ || prevline =~ '^\s*[ |]*($'
-		if prevline !~ '\(esac\|fi\|done\)\>\s*$' && prevline !~ '}\s*$' && prevline !~ '^\s*)' && prevline !~ '^\s*#[ #]'
+		if prevline !~ '\(esac\|fi\|done\)\>\s*$' && prevline !~ '}\s*$' && prevline !~ '^\s*)' && prevline !~ '^\s*#[ \t#]'
 			let prevind = prevind + &sw
 			return prevind
 		endif
@@ -161,18 +169,37 @@ function GetShIndent()
 				\ || curline =~ '^\s*#}'
 				\ || curline =~ '^\s*)'
 				\ )
-				\ && curline !~ '^\s*fi[ln]\>' && curline !~ '^\s*#[ #]'
+				\ && curline !~ '^\s*fi[ln]\>' && curline !~ '^\s*#[ \t#]'
 		let prevind = prevind - &sw
 	endif
 
 	if prevline =~ '.*\\$' && s:indent_slash == -1
-			\ && prevline !~ '^\s*#[ #]'
-			\ && (prevprevline !~ '.*\\$' || prevprevline =~ '^\s*#[ #]' )
+			\ && prevline !~ '^\s*#[ \t#]'
+			\ && (prevprevline !~ '.*\\$' || prevprevline =~ '^\s*#[ \t#]' )
 		let prevind = prevind + &sw
 		let s:indent_slash = prevind
 		return prevind
 	endif
 
+
+
+	return prevind
+endfunction
+
+function GetShIndent()
+	let curline = getline(v:lnum)
+	let prevind = GetShIndent0()
+	if s:indent_eof==-1 && s:indent_echo1==-1 && s:indent_echo2==-1 && s:indent_slash==-1
+		if curline =~ '^#[^{}].*' || curline =~ '^#$'
+			if s:indent_befor_skip =~ -1
+				let s:indent_befor_skip = prevind
+			endif
+			return 0
+		endif
+	endif
+	if s:indent_befor_skip != -1
+		let s:indent_befor_skip = -1
+	endif
 	return prevind
 endfunction
 
