@@ -139,8 +139,8 @@ function GetShIndent0()
 	if prevline =~ '^\s*[ |]*\(if\|for\|while\|else\|elif\|until\)\>'
 				\ || prevline =~ '^.*[|][ ]while'
 				\ || (prevline =~ '^\s*case\>' && g:sh_indent_case_labels)
-				\ || prevline =~ '^\s*\S*\s*()\s*{$'
-				\ || prevline =~ '^\s*function\s*\<\k\+\>\s*()\s*{$'
+				\ || prevline =~ '^\s*\S*\s*(.*)\s*{$'
+				\ || prevline =~ '^\s*function\s*\<\k\+\>\s*(.*)\s*{$'
 				\ || prevline =~ '^\s*{$'
 				\ || prevline =~ '^\s*#{$'
 				\ || prevline =~ '^\s*[^() \t]\{1,\})'
