@@ -42,6 +42,10 @@ mysql_dumpsplit(){
 PREFIX="${DB_NAME}.sql"
 rm -f "$PREFIX.table."*
 
+error=$( git pull origin master 2>&1 )\
+	|| echo "$error" | grep -qm1 'does not appear to be a git repositor' \
+	|| { echo  "$error"; exit 1; }
+
 set -o pipefail
 mysqldump --user=$USER --host="$DB_HOST" --password="$PASSWORD" \
 	--opt -c --databases "$DB_NAME" \
