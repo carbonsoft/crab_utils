@@ -60,7 +60,8 @@ git add .
 error=$( git commit -am $(date +%Y-%m-%d_%H-%M) 2>&1 ) \
 	|| echo "$error" | grep -qm1 'nothing to commit' \
 	|| { echo  "$error"; exit 1; }
-git gc
+rm -f "$PREFIX.table."*
+[ $(($RANDOM % 10 )) = 0 ] && git gc
 error=$( git push origin master 2>&1 )\
 	|| echo "$error" | grep -qm1 'does not appear to be a git repositor' \
 	|| { echo  "$error"; exit 1; }
