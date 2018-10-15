@@ -5,6 +5,7 @@ set -eu
 . /opt/crab/crab_utils/bin/::carbon.sys
 
 sys::usage "$@"
+
 # --help Info:
 # --help Утилита проверки синтаксиса и ошибок bash в стиле set -eu
 # --help обязательна для всех новых файлов с 2017 года
@@ -25,6 +26,12 @@ if [ "${1:-}" = "--maybe" ]; then
 fi
 
 SYNTAX_STYLE=${2:-bash}
+
+# чтобы правильно считать длину кириллических строк
+# будучи вызванным в неполном окружении
+if [ -z "${LANG:-}" -a -z "${LC_CTYPE:-}" ]; then
+	export LANG=ru_RU.UTF-8
+fi
 
 if [ -d "$1" ]; then
 	DIR="$1"
