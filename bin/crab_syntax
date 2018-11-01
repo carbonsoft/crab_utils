@@ -641,7 +641,7 @@ strongbash030_2(){
 	local fname
 	for fname in $ALL_FUNCS; do
 		if egrep -n "(^|.*\W)$fname[ ]*\|\|.*" "$F" ; then
-			echo_error "strongbash030_2 нельзя использовать $fname |$__EMPTY| cmd1"
+			echo_error "strongbash030_2 нельзя использовать функция $fname |$__EMPTY| cmd1"
 		fi
 	done
 	return 0
@@ -651,7 +651,7 @@ strongbash030_3(){
 	local fname
 	for fname in $ALL_FUNCS; do
 		if egrep -n ".*if.*\s$fname\W+.*" "$F" ; then
-			echo_error "strongbash030_3 нельзя использовать if $fname; then"
+			echo_error "strongbash030_3 нельзя использовать функция if $fname; then"
 		fi
 	done
 	return 0
