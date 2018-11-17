@@ -1,0 +1,84 @@
+#!/bin/bash
+
+set -eu
+echo "$0 $@ [$$] START" >&2
+if [ ${1:---help} = --help ]; then
+	echo 'Info: копирует файлы или каталоги без порчи кеша используя dd O_DIRECT'
+	echo 'Info: это важно при копировании больших объемов для того чтобы'
+	echo 'Info: сервер или рабочий комп не стал тормозить'
+	echo 'Usage: ./cp_nocache src[/] dst[/]'
+	echo 'Example: ./cp_nocache /tmp/yy/ /tmp/bb/'
+	echo 'Example: ./cp_nocache /tmp/yy /tmp/bb/'
+	echo 'Example: ./cp_nocache /tmp/readme.txt /tmp/bb/'
+	echo 'Example: ./cp_nocache /tmp/readme.txt /tmp/bb/hello.txt'
+fi
+
+SRC="${1}"
+DST="${2}"
+# если копируем каталог вместе с самим собой в другой каталог
+if [ "${SRC: -1}" != '/' -a -d "$SRC" ]; then
+	DST="$DST${SRC##*/}/"
+	SRC="${SRC}/"
+fi
+
+# если копируем файл в файл
+if [ ! -d "$SRC" ] && [ "${DST: -1}" != '/' -o ! -d "$DST" ]; then
+	dst_fshort_name="${DST##*/}"
+	DST="${DST%/*}"
+else
+	dst_fshort_name=
+fi
+
+# обрезаем конечные слеши
+[ "${SRC: -1}" = '/' ] && SRC="${SRC:0: -1}"
+[ "${DST: -1}" = '/' ] && DST="${DST:0: -1}"
+
+SIZE_TOTAL=0
+echo src=$SRC dst=$DST dst_fshort_name=$dst_fshort_name
+
+__copy_file(){
+	local src="$1"
+	local dst="$2"
+	local fsize bsize
+	echo "src=$src $((SIZE_TOTAL/(SECONDS+1)/1024))kB/s"
+	# echo dst=$dst
+	fsize=$(stat "$src" -c '%s')
+	SIZE_TOTAL=$((SIZE_TOTAL+fsize))
+	bsize=$((fsize/512*512))
+	[ $bsize -gt 128000 ] && bsize=128000
+	if [ -L "$src" ] || [ $fsize -lt 512 ]; then
+		cp -a "$src" "$dst"
+	else
+		dd conv=noerror iflag=direct if="$src" of="$dst" oflag=direct bs=$bsize &>/dev/null
+	fi
+	chown --reference="$src" "$dst"
+	chmod --reference="$src" "$dst"
+	return 0
+}
+find "$SRC" | while read -r fname; do
+	src_dir="${fname%/*}"
+	src_sub_dir="${src_dir/$SRC/}"
+	[ ! -d "$SRC" ] && src_sub_dir=''
+	if [ "$SRC" = "$fname" ]; then
+		src_sub_dir=''
+		[ -d "$fname" ] && continue
+	fi
+	fshort_name="${fname##*/}"
+	[ -n "$dst_fshort_name" ] && fshort_name="$dst_fshort_name"
+	dst_dir="$DST$src_sub_dir"
+	dst_file="$DST$src_sub_dir/$fshort_name"
+	if [ -d "$fname" ]; then
+		mkdir -p "$dst_file"
+		chown --reference="$fname" "$dst_file"
+		chmod --reference="$fname" "$dst_file"
+		continue
+	fi
+	if [ ! -d "$dst_dir" ]; then
+		mkdir -p "$dst_dir"
+		chown --reference="$src_dir" "$dst_dir"
+		chmod --reference="$src_dir" "$dst_dir"
+	fi
+	__copy_file "$fname" "$dst_file"
+done
+echo "$0 $@ [$$] SUCCESS"
+exit 0
