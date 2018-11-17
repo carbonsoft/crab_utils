@@ -388,7 +388,7 @@ strongbash015(){
 	if [[ "$avg_size" -gt "$MAX_FSIZE" ]]; then
 		echo_error \
 			"strongbash015 Слишком большой линейный файл" \
-			"$(((fsize-fcomm_size)/fcount)) больше $MAX_FSIZE строк, "\
+			"$(((fsize-fcomm_size)/(1+fcount))) больше $MAX_FSIZE строк, "\
 			"разбейте на функции"
 	fi
 	return 0
