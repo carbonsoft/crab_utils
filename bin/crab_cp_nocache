@@ -2,7 +2,7 @@
 
 set -eu
 echo "$0 $@ [$$] START" >&2
-if [ ${1:---help} = --help ]; then
+if [ "${1:---help}" = --help ]; then
 	echo 'Info: копирует файлы или каталоги без порчи кеша используя dd O_DIRECT'
 	echo 'Info: это важно при копировании больших объемов для того чтобы'
 	echo 'Info: сервер или рабочий комп не стал тормозить'
@@ -48,6 +48,7 @@ __copy_file(){
 	[ $bsize -gt 128000 ] && bsize=128000
 	if [ -L "$src" ] || [ $fsize -lt 512 ]; then
 		cp -a "$src" "$dst"
+		return 0
 	else
 		dd conv=noerror iflag=direct if="$src" of="$dst" oflag=direct bs=$bsize &>/dev/null
 	fi
@@ -67,13 +68,13 @@ find "$SRC" | while read -r fname; do
 	[ -n "$dst_fshort_name" ] && fshort_name="$dst_fshort_name"
 	dst_dir="$DST$src_sub_dir"
 	dst_file="$DST$src_sub_dir/$fshort_name"
-	if [ -d "$fname" ]; then
+	if [ -d "$fname" -a ! -L "$fname" ]; then
 		mkdir -p "$dst_file"
 		chown --reference="$fname" "$dst_file"
 		chmod --reference="$fname" "$dst_file"
 		continue
 	fi
-	if [ ! -d "$dst_dir" ]; then
+	if [ ! -d "$dst_dir" -a ! -L "$fname" ]; then
 		mkdir -p "$dst_dir"
 		chown --reference="$src_dir" "$dst_dir"
 		chmod --reference="$src_dir" "$dst_dir"
