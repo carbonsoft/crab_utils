@@ -2,7 +2,7 @@
 
 set -eu
 
-. /opt/crab/crab_utils/bin/::carbon.sys
+. /opt/crab/crab_utils/bin/crab_sys.sh
 
 sys::usage "$@"
 
@@ -228,7 +228,7 @@ strongbash001(){
 
 strongbash002(){
 	if ! head -n 10 "$F" | egrep -q '^(# )?set -eu' \
-		&& ! grep -q '::carbon.sys' "$F"; then
+		&& ! grep -q 'crab_sys.sh' "$F"; then
 		echo_error\
 			'strongbash002 Не установлен set -eu'
 	fi
@@ -262,7 +262,7 @@ strongbash005(){
 strongbash006(){
 	if ! tail -n 2 "$F" | head -n 1 | grep -q '$0 $@ \[$$\] SUCCESS' \
 		|| ! grep -q '$0 $@ \[$$\] START' "$F" ; then
-		grep -q '::carbon.sys' "$F" && return 0
+		grep -q 'crab_sys.sh' "$F" && return 0
 		echo_error 'strongbash006 В начале каждого файла должен быть:
 		echo "$0 $@ [$$] START" >&2
 		BODY
@@ -276,7 +276,7 @@ strongbash006(){
 		# exit 0
 
 		или используйте:
-		. ::carbon.sys
+		. crab_sys.sh
 		BODY
 		exit 0
 		'

@@ -2,7 +2,7 @@
 ##
 
 set -eu
-. /opt/crab/crab_utils/bin/::carbon.sys
+. /opt/crab/crab_utils/bin/crab_sys.sh
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
 ### --help Info: запуск тестов foreach /opt/crab/crab_utils/test/test-*

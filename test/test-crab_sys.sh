@@ -1,24 +1,24 @@
 #!/bin/bash
 
 set -eu
-. /opt/crab/crab_utils/bin/::carbon.sys
+. /opt/crab/crab_utils/bin/crab_sys.sh
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
-### --help Info: тестирование ::carbon.sys
+### --help Info: тестирование crab_sys.sh
 ### --help Usage:
-### --help Example: test-::carbon.sys
+### --help Example: test-crab_sys.sh
 
 failed=FALSE
 
 ### sys::usage
-$0 --help &>/tmp/test-::carbon.sys.$$
-for word in 'Example: test-::carbon.sys' '^START' '^SUCCESS'; do
-	if ! grep -qm1 "$word" /tmp/test-::carbon.sys.$$; then
+$0 --help &>/tmp/test-crab_sys.sh.$$
+for word in 'Example: test-crab_sys.sh' '^START' '^SUCCESS'; do
+	if ! grep -qm1 "$word" /tmp/test-crab_sys.sh.$$; then
 		echo "TEST $0 grep $word [ FAILED ]"
 		failed=TRUE
 	fi
 done
-rm -f /tmp/test-::carbon.sys.$$
+rm -f /tmp/test-crab_sys.sh.$$
 
 ### sys::arg_parse
 sys::arg_parse "arg1" "arg2" "--named1=a1" "--named2=a2" "--forced"
@@ -40,15 +40,15 @@ if [ "${1:-}" = "testexit" ]; then
 fi
 
 if [ "${1:-}" != "testexit" ]; then
-	$0 testexit &>/tmp/test-::carbon.sys.$$ || true
-	if ! grep -qm1 'ERROR_SOURCE' /tmp/test-::carbon.sys.$$; then
+	$0 testexit &>/tmp/test-crab_sys.sh.$$ || true
+	if ! grep -qm1 'ERROR_SOURCE' /tmp/test-crab_sys.sh.$$; then
 		echo "TEST $0 grep ERROR_SOURCE [ FAILED ]"
 		failed=TRUE
 	fi
-	rm -f /tmp/test-::carbon.sys.$$
+	rm -f /tmp/test-crab_sys.sh.$$
 fi
 
-check_funcs=$( cat /opt/crab/crab_utils/bin/::carbon.sys \
+check_funcs=$( cat /opt/crab/crab_utils/bin/crab_sys.sh \
 	| grep '^.*()' \
 	| sed -n  's/^\(.*\)().*{/\1/p' ) # '
 

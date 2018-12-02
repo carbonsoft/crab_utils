@@ -2,7 +2,7 @@
 
 set -eu
 __SILENT=TRUE
-. /opt/crab/crab_utils/bin/::carbon.sys
+. /opt/crab/crab_utils/bin/crab_sys.sh
 
 sys::usage "$@"
 # --help Info:
