@@ -6,12 +6,12 @@
 ### version 2018-03-06
 # --help Info: библиотека вспомогательных функций для работы в стиле opencarbon7
 # --help Usage:
-# --help . /opt/crab/crab_utils/bin/carbon.sys
-# --help source /opt/crab/crab_utils/bin/carbon.sys
+# --help . /opt/crab/crab_utils/bin/crab_sys.sh
+# --help source /opt/crab/crab_utils/bin/crab_sys.sh
 # --help Example:
 # --help #!/bin/bash
 # --help set -ue
-# --help . /opt/crab/crab_utils/bin/carbon.sys
+# --help . /opt/crab/crab_utils/bin/crab_sys.sh
 # --help sys::usage "$@"
 # --help ### --help Info: Usage: Example:
 # --help sys::arg_parse "$@"
