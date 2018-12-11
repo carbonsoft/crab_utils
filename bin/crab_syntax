@@ -69,7 +69,7 @@ error_msg=""
 ALL_FUNCS=$( cat "$F" \
 	| grep '^.*()' \
 	| sed 's/^function //' \
-	| sed -n  's/^\(\S*\)().*{/\1/p' ) || true # '
+	| sed -n  's/^\s*\(\S*\)().*{/\1/p' ) || true # '
 
 declare -A F_LOCAL_VARS
 declare -A F_UNKNOWN_VARS
@@ -81,8 +81,12 @@ func_fill_body(){
 	local fname
 	for fname in $ALL_FUNCS; do
 		F_BODY[$fname]=$( grep -A 1000000 "^${fname}()[ ]*{" "$F" \
-			| grep -B100000 -m1 '^}' || true )
-		# "
+			| grep -B100000 -m1 '^}' || true ) # "
+		if [ -z "${F_BODY[$fname]}" ]; then
+			# частичная поддержка влолженных функций
+			F_BODY[$fname]=$( grep -P -A 1000000 "^[\s]*${fname}\(\)[\s]*{" "$F" \
+				| grep -P -B100000 -m1 '^[\s]*}' || true )
+		fi
 	done
 	return 0
 }
@@ -236,7 +240,7 @@ strongbash002(){
 }
 
 strongbash003(){
-	egrep -n '^[^#].*(if|&&|\|\|).* \|\| true' "$F" &&\
+	egrep -n '^[^#].*(if|\][ ]*&&|\|\|).* \|\| true' "$F" &&\
 		echo_error 'strongbash003 Нельзя использовать || true в условных выражениях'
 	return 0
 }
@@ -250,11 +254,12 @@ strongbash004(){
 strongbash005(){
 	### todo обрабатывать отдельно каждую функцию
 	local count_func count_end_return
-	count_func=$( grep '()[ ]*{' "$F" | wc -l || true ) # '
-	count_end_return=$( grep 'return\|exit' -A 1 "$F" | grep '^}' | wc -l || true )
+	count_func=$( echo -n "${ALL_FUNCS}" | wc -w ) # {
+	count_end_return=$( grep 'return\|exit' -A 1 "$F" | grep -P '^\s*}' | wc -l || true )
 	[ $count_func != $count_end_return ] \
 		&& echo_error \
-		'strongbash005 $count_func!=$count_end_return В конце каждой функции должен быть '\
+		'strongbash005 $count_func!=$count_end_return'" $count_func=$count_end_return"\
+		'В конце каждой функции должен быть '\
 		'return 0 или return $ret или exit'
 	return 0
 }
