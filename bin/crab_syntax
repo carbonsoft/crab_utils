@@ -319,11 +319,12 @@ strongbash010(){
 		'глобальные переменные для временных файлов,' \
 		'лучше локальные local tt=/tmp/binname_tmpcat.$$' \
 		'или глобальный каталог mkdir -p $TMPDIR $TMPDIR/testfile.txt'
-	if egrep -q '^[^#]*rm.*/tmp/.*' "$F" && \
-		! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep -q '$$'; then
-		egrep -n 'rm.*/tmp/.*' "$F"
+	if egrep -q '^[^#]*rm.*/tmp/.*' "$F" \
+		&& ! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep -q '$$' \
+		&& ! egrep -B 1 '^[^#]*rm.*/tmp/.*' "$F" | grep -q 'skip strongbash011'; then
 		echo_error 'strongbash011 Нельзя использовать временные файлы без $$, '\
-			'лучше rm -f /tmp/binname_tmpcat.$$'
+			'лучше rm -f /tmp/binname_tmpcat.$$'\
+			'в редких случаях # skip strongbash011 стокой выше'
 	fi
 	return 0
 }
