@@ -578,7 +578,7 @@ strongbash024_3(){
 strongbash024_4(){
 	if grep -n -P '^(?![#])rm(?!.*-one-file-system.*).*-r.*' "$F"; then
 		echo_error "strongbash024_4"\
-			'Запрещено r''m -rf без -one-file-system '
+			'Запрещено r''m -rf без --one-file-system '
 	fi
 	return 0
 }
