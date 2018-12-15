@@ -240,7 +240,7 @@ strongbash002(){
 }
 
 strongbash003(){
-	egrep -n '^[^#].*(if|\][ ]*&&|\|\|).* \|\| true' "$F" &&\
+	egrep -n '^[^#]*[$__SPACE]*(if |\][ ]*&&|\|\|).* \|\| true' "$F" &&\
 		echo_error 'strongbash003 Нельзя использовать || true в условных выражениях'
 	return 0
 }
