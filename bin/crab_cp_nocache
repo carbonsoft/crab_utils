@@ -35,6 +35,7 @@ fi
 
 SIZE_TOTAL=0
 echo src=$SRC dst=$DST dst_fshort_name=$dst_fshort_name
+BSIZE_MAX=$((4*1024*1024))
 
 __copy_file(){
 	local src="$1"
@@ -45,7 +46,7 @@ __copy_file(){
 	fsize=$(stat "$src" -c '%s')
 	SIZE_TOTAL=$((SIZE_TOTAL+fsize))
 	bsize=$((fsize/512*512))
-	[ $bsize -gt 128000 ] && bsize=128000
+	[ $bsize -gt $BSIZE_MAX ] && bsize=$BSIZE_MAX
 	if [ -L "$src" ] || [ $fsize -lt 512 ]; then
 		cp -a "$src" "$dst"
 		return 0
