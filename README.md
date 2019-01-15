@@ -28,4 +28,4 @@ One utility to run syntax checks in shell, c and python.
 ### crab_example
 
 Provides many short examples for utilities, e.g. mdadm, sed, bash, php, git, etc.
-Automatic grep http://opencarbon.ru/example and custom link.
+Automatic grep http://opencarbon.ru/example:start and custom link.
