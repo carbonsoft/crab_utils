@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """ TODO: опишите, что это за скрипт """
+# coding: utf-8
 
 import argparse
 
