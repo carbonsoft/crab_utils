@@ -62,4 +62,5 @@ mkdir -p /opt/crab/
 git_update
 create_symlink
 configure_mc
+/opt/crab/crab_utils/bin/crab_example update
 exit 0
