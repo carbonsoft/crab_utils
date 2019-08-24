@@ -902,7 +902,7 @@ else
 		if [[ "${F##*/}" == "crab_syntax" ]]; then
 			[[ " $self_skip " == *" $check "* ]] && continue
 		fi
-		header_checks=" qwe " #strongbash006 strongbash007 strongbash008 strongbash019 strongbash032"
+		header_checks="strongbash006 strongbash007 strongbash008 strongbash019 strongbash032"
 		if [ "$skip_strongbash_header" = TRUE ]\
 			&& [[ " $header_checks " == *" $check "* ]]; then
 			continue
