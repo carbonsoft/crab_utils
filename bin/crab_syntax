@@ -277,6 +277,7 @@ strongbash006(){
 		BODY
 		exit 0
 		'
+		echo 'или для lib и include: # skip strongbash header'
 	fi
 	return 0
 }
@@ -886,6 +887,9 @@ strongbash035(){
 }
 
 self_skip='strongbash021_1 strongbash021_2 strongbash021_3 strongbash021_4 strongbash021_5'
+if fgrep -q '# skip strongbash header' "$F"; then
+	skip_strongbash_header=TRUE
+fi
 if [ $maybe == 1 ]; then
 	strongbash001
 	strongbash002
@@ -895,6 +899,11 @@ else
 	for check in $( typeset -F | grep strongbash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
 		if [[ "${F##*/}" == "crab_syntax" ]]; then
 			[[ " $self_skip " == *" $check "* ]] && continue
+		fi
+		header_checks=" qwe " #strongbash006 strongbash007 strongbash008 strongbash019 strongbash032"
+		if [ "$skip_strongbash_header" = TRUE ]\
+			&& [[ " $header_checks " == *" $check "* ]]; then
+			continue
 		fi
 		# echo $check # time $check
 		$check
