@@ -37,7 +37,7 @@ if [ -d "$1" ]; then
 	DIR="$1"
 	failed=FALSE
 	while read -r f; do
-		if ! head -n1 "$f" | grep -q '#!/bin/bash'; then
+		if ! head -n1 "$f" | grep -q '\(#!/bin/bash\|strongbash\)'; then
 			continue
 		fi
 		if ! /opt/crab/crab_utils/bin/crab_syntax "$f"; then
