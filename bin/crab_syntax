@@ -369,7 +369,7 @@ strongbash014(){
 			echo_error \
 				"strongbash014 Слишком большая функция $fname $fsize"\
 				"больше $MAX_FSIZE строк, "\
-				"выделите подфункции $__fname"
+				"выделите подфункции $fname"
 
 		fi
 
