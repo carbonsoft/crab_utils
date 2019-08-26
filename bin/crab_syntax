@@ -707,7 +707,7 @@ strongbash033_2(){
 				grep -q "skip strongbash033.*$var" "$F" && continue
 				echo_error \
 "strongbash033_2 в функции $fname переменная $var не объявлена как local
-или для внешних, в начале файла \ndeclare \$$var
+или для внешних, в начале файла \ndeclare $var
 или для совместимости со старым кодом: # skip strongbash033 \$var \$$var \$var2"
 				# echo "F_BODY = ${F_BODY[$fname]}"
 				# echo "${F_UNKNOWN_VARS[$fname]:-}"
