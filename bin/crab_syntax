@@ -43,7 +43,7 @@ if [ -d "$1" ]; then
 		if ! /opt/crab/crab_utils/bin/crab_syntax "$f"; then
 			failed=TRUE
 		fi
-	done< <( find "$DIR"/* -type f )
+	done< <( find "$DIR"/* -type f \( ! -path '*/todo/*' -a ! -path '*/TODO*/*' \) )
 	[ $failed = TRUE  ] && { echo FAILED; exit 1; }
 	exit 0
 fi
