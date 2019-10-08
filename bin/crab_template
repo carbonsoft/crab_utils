@@ -5,7 +5,7 @@ set -euE
 echo "$0 $@ [$$] START" >&2
 
 if [ "${1:-}" == '--help' ]; then
-	echo "Info: $0 - утилита для того и этого."
+	echo "Info: $0 - утилита для создания файлов по шаблону."
 	echo "Usage: $0 [--help|bash|bash_silent|python]"
 	echo "Example: $0 - выводит на экран шаблон новыого скрипта, соответствующий strongbash"
 	echo "Example: $0 bash - выводит на экран шаблон новыого скрипта, соответствующий strongbash"
