@@ -37,7 +37,7 @@ if [ -d "$1" ]; then
 	DIR="$1"
 	failed=FALSE
 	while read -r f; do
-		if ! head -n1 "$f" | grep -q '#!/bin/bash'; then
+		if ! head -n1 "$f" | grep -q '\(#!/bin/bash\|strongbash\)'; then
 			continue
 		fi
 		if ! /opt/crab/crab_utils/bin/crab_syntax "$f"; then
@@ -277,6 +277,7 @@ strongbash006(){
 		BODY
 		exit 0
 		'
+		echo 'или для lib и include: # skip strongbash header'
 	fi
 	return 0
 }
@@ -377,16 +378,27 @@ strongbash014(){
 }
 
 strongbash015(){
-	local fcount avg_size
+	local fcount avg_size long_string_size echo_string_size __fcount fsize
 	fsize=$(cat "$F" | wc -l )
 	fcomm_size=$( grep "^[$__SPACE]*#.*" "$F" | wc -l || true )
+	# смягчаем для шаблонов и конфигураторов
+	long_string_size=$( grep "^[$__SPACE]*[\"'] " "$F" | wc -l || true )
+	# смягчаем для шаблонов и конфигураторов
+	echo_string_size=$( grep "^[$__SPACE]*echo " "$F" | wc -l || true )
+	[ $long_string_size -ge 2 ] && long_string_size=$((long_string_size-1))
+	[ $echo_string_size -ge 2 ] && echo_string_size=$((echo_string_size-1))
 	fcount=$( grep '()[ ]*{*' "$F" | wc -l || true ) # ' #}
-	[ "$fcount" -gt 1 ] && fcount=$(( fcount/2 )) # 32 строк на ф
-	avg_size=$(((fsize-fcomm_size)/(1+fcount)))
+	[ $fcount -gt 1 ] && __fcount=$((fcount/2)) || __fcount=fcount # 32 line per func
+	avg_size=$(((fsize-fcomm_size-long_string_size-echo_string_size)/(1+__fcount)))
 	if [[ "$avg_size" -gt "$MAX_FSIZE" ]]; then
 		echo_error \
-			"strongbash015 Слишком большой линейный файл" \
-			"$(((fsize-fcomm_size)/(1+fcount))) больше $MAX_FSIZE строк, "\
+			"strongbash015 Слишком большой линейный файл,"\
+			" мало функций=$((fcount))"\
+			" fsize($fsize)"\
+			"-echo_string_size($echo_string_size)"\
+			"-long_string_size($long_string_size)"\
+			" avg_lines_count = $avg_size"\
+			" больше $MAX_FSIZE строк, "\
 			"разбейте на функции"
 	fi
 	return 0
@@ -886,6 +898,11 @@ strongbash035(){
 }
 
 self_skip='strongbash021_1 strongbash021_2 strongbash021_3 strongbash021_4 strongbash021_5'
+if fgrep -q '# skip strongbash header' "$F"; then
+	skip_strongbash_header=TRUE
+else
+	skip_strongbash_header=FALSE
+fi
 if [ $maybe == 1 ]; then
 	strongbash001
 	strongbash002
@@ -895,6 +912,11 @@ else
 	for check in $( typeset -F | grep strongbash[0-9][0-9][0-9] | sed 's/declare -f //' || true ); do
 		if [[ "${F##*/}" == "crab_syntax" ]]; then
 			[[ " $self_skip " == *" $check "* ]] && continue
+		fi
+		header_checks="strongbash006 strongbash007 strongbash008 strongbash019 strongbash032"
+		if [ "$skip_strongbash_header" = TRUE ]\
+			&& [[ " $header_checks " == *" $check "* ]]; then
+			continue
 		fi
 		# echo $check # time $check
 		$check
