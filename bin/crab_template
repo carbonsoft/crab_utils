@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -euE
+
+echo "$0 $@ [$$] START" >&2
+
+if [ "${1:-}" == '--help' ]; then
+	echo "Info: $0 - утилита для создания файлов по шаблону."
+	echo "Usage: $0 [--help|bash|bash_silent|python]"
+	echo "Example: $0 - выводит на экран шаблон новыого скрипта, соответствующий strongbash"
+	echo "Example: $0 bash - выводит на экран шаблон новыого скрипта, соответствующий strongbash"
+	echo "Example: $0 bash_silent- выводит на экран тихий скрипт, соответствующий strongbash"
+	echo "Example: $0 python - выводит на экран шаблон питоновой утилиты"
+	exit 0
+fi
+
+main() {
+	local template_path="/opt/crab/crab_utils/tmplt/tmplt_${1:-bash}"
+	[ -f "$template_path" ] && cat "$template_path"
+	return 0
+}
+
+main "$@"
+echo "$0 $@ [$$] SUCCESS" >&2
+exit 0
