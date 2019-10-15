@@ -16,7 +16,7 @@ sys::usage "$@"
 
 
 if [ "${1}" == "update" ]; then
-
+	mkdir -p /tmp/.carbon_example
 	echo 0 > /tmp/.carbon_example/lastupdate
 fi
 
