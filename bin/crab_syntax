@@ -38,10 +38,18 @@ if [ -d "$ARG_1" ]; then
 			failed=TRUE
 			[ "${ARG_FAILSTOP:-}" = TRUE ] && exit 1
 		fi
-	done< <( find "$DIR"/* -type f \( ! -path '*/todo/*' -a ! -path '*/TODO*/*' \) )
+	done< <( find "$DIR"/* -type f )
 	[ $failed = TRUE  ] && { echo FAILED; exit 1; }
 	exit 0
 fi
+
+for skip_folder in 'todo' 'TODO' 'doc' 'docs'; do
+	if [[ "$ARG_1" = */${skip_folder}/* ]]; then
+		echo "Skip file ${ARG_1}. /${skip_folder}/ in path."
+		exit 0
+	fi
+done
+
 
 if [ "$SYNTAX_STYLE" != "bash" ]; then
 	echo "not supported \"$SYNTAX_STYLE\" yet. plz add new style"
