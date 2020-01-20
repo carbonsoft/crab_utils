@@ -10,7 +10,7 @@ OpenCarbon7: utilities and helpers for developers.
 mkdir -p /opt/crab/
 cd  /opt/crab/
 git clone https://github.com/carbonsoft/crab_utils.git
-/opt/crab/crab_utils/crab_update
+/opt/crab/crab_utils/bin/crab_update
 ```
 
 ## Utils
