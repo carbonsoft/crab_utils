@@ -429,7 +429,11 @@ strongbash017(){
 			echo "$line"
 			echo_error \
 				"strongbash017 длина строки больше $MAX_CHARS используйте перенос \\ "\
-				"примеры переносов:\necho_suc \"aaaaaaaaaaaaaaaaaa\"\\ \n\"bbbbbbbb\" "
+				"примеры переносов:"\
+				"\nВариант 1"\
+				"\necho_suc \"aaaaaaaaaaaaaaaaaa\" \\ \n         \"bbbbbbbb\" "\
+				"\nВариант 2"\
+				"\necho_suc \\ \n\"aaaaaaaaaaaaaaaaaa\\ \nbbbbbbbb\" "
 		fi
 	done < "$F"
 	return 0
