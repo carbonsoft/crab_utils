@@ -592,7 +592,7 @@ strongbash024_2(){
 	return 0
 }
 strongbash024_3(){
-	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*\/"' "$F"; then
+	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$[^/]*\/"' "$F"; then
 		echo_error "strongbash024_3"\
 			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
 		чтобы не удалить корень
