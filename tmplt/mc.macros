@@ -1,2 +1,2 @@
 [editor]
-ctrl-f=MarkAll;ExecuteScript:25;Unmark;
+ctrl-a=MarkAll;ExecuteScript:25;Unmark;
