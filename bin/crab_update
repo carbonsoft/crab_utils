@@ -48,7 +48,8 @@ git_update(){
 			git reset --hard
 			if [ "$repo" == "/opt/crab/crab_utils" ]; then
 				if ping -i 2 -c 1 github.com; then
-					git pull "https://github.com/carbonsoft/crab_utils.git" master
+					git pull "https://github.com/carbonsoft/crab_utils.git" master \
+						|| true
 					git reset --hard
 					continue
 				else
