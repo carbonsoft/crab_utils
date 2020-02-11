@@ -284,12 +284,21 @@ mkdir -p $TMP_WORK_DIR $TMP_NEW_WORK_DIR $TMP_OLD_WORK_DIR $STORE_SUCCESS_DIR
 # История изменения файлов между актуальной версией ветки(old) и запушенной(new).
 git log $'--pretty=format:commit\t%H' --name-status --reverse \
 	$check_range > $TMP_WORK_DIR/git_log
+if grep -q .crab_syntax_skip $TMP_WORK_DIR/git_log; then
+	# поставим вперед всех
+	grep .crab_syntax_skip $TMP_WORK_DIR/git_log > $TMP_WORK_DIR/git_log.new
+	cat $TMP_WORK_DIR/git_log >> $TMP_WORK_DIR/git_log.new
+	mv -f $TMP_WORK_DIR/git_log.new $TMP_WORK_DIR/git_log
+fi
 while IFS=$'\t' read -r mode file any_tail; do
 	# if [ "$mode" == "commit" ]; then
 	# 	commit=$file
 	# 	echo "Check commit $commit"
 	# elif
-
+	if [[ "$file" == *".crab_syntax_skip" ]]; then
+		git_checkout $new_commit "$file" $TMP_NEW_WORK_DIR
+		continue
+	fi
 	# D - удалённые, A - новые, M - изменённые файлы.
 	if [ "$mode" == "A" ] || [ "$mode" == "M" ]; then
 		# осв: скипаем расширеня в первую очередь тк это быстрей всего
