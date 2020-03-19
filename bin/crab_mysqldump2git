@@ -8,9 +8,25 @@ if [ "${1:---help}" = "--help" ]; then
 	echo "делает разбивку файлов split и commit и push"
 	echo "Usage:"
 	echo "Example: backup: $0 --user=root --password=mypass --host=localhost DB_NAME BACKUP_DIR"
-	echo 'Example: restore: git log; git checkout;'
-	echo 'Example: restore: for f in *.sql.*; do cat $f >>new.sql; done;'
-	echo 'Example: restore: /usr/bin/mysql -uroot -p123  < new.sql'
+	echo 'Example: Restore
+git log; git checkout;
+for f in *.sql.*; do cat $f >>new.sql; done;
+
+mv /var/lib/mysql /var/lib/mysql.before_repair.$(date +%s)
+/etc/init.d/mysqld start || true # пустой каталок, пишет что ошибка на самом деле нет
+
+if ! pidof mysqld; then
+	echo "cant start mysqld"
+	exit 1
+fi
+
+/usr/bin/mysqladmin -u root password "$ARG_PASSWORD"
+/usr/bin/mysql -u root -p"$ARG_PASSWORD" </tmp/mysqldump.$$.sql
+rm -f new.sql
+# контрольная проверка
+/etc/init.d/mysqld stop
+/etc/init.d/mysqld start
+'
 	exit 0
 fi
 
