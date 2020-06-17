@@ -1,0 +1,2 @@
+[editor]
+ctrl-a=MarkAll;ExecuteScript:25;Unmark;

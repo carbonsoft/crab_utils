@@ -2,44 +2,54 @@
 
 set -eu
 
-. /opt/crab/crab_utils/bin/::carbon.sys
+. /opt/crab/crab_utils/bin/crab_sys.sh
 
 sys::usage "$@"
 # --help Info:
 # --help Утилита проверки синтаксиса и ошибок bash в стиле set -eu
 # --help обязательна для всех новых файлов с 2017 года
 # --help для старых файлов переход на set -eu разрешен только после написания func/unit теста
+# --help исключения для сторонних файлов проекта добавляем в файл .crab_syntax_skip
 # --help test-имя, в котором тестируется _весь_ функционал скрипта в чистых и ошибочных ситуациях
 # --help Usage:
-# --help crab_syntax $filename|$dir bash|cc|python|html|xml
+# --help crab_syntax $filename|$dir bash|cc|python|html|xml [--failstop] [--maybe]
 # --help Example:
 # --help crab_syntax myfile.sh
 # --help crab_syntax myfile.sh bash
-
 # Проверка базовых правил.
-maybe=0
 
-if [ "${1:-}" = "--maybe" ]; then
-	maybe=1
-	shift
+sys::arg_parse "$@"
+SYNTAX_STYLE=${ARG_2:-bash}
+
+# чтобы правильно считать длину кириллических строк
+# будучи вызванным в неполном окружении
+if [ -z "${LANG:-}" -a -z "${LC_CTYPE:-}" ]; then
+	export LANG=ru_RU.UTF-8
 fi
-
-SYNTAX_STYLE=${2:-bash}
-
-if [ -d "$1" ]; then
-	DIR="$1"
+if [ -d "$ARG_1" ]; then
+	DIR="$ARG_1"
 	failed=FALSE
 	while read -r f; do
-		if ! head -n1 "$f" | grep -q '#!/bin/bash'; then
+		[ ! -s "$f" ] && continue
+		if ! head -n1 "$f" | grep -q '\(#!/bin/bash\|strongbash\)'; then
 			continue
 		fi
 		if ! /opt/crab/crab_utils/bin/crab_syntax "$f"; then
 			failed=TRUE
+			[ "${ARG_FAILSTOP:-}" = TRUE ] && exit 1
 		fi
 	done< <( find "$DIR"/* -type f )
 	[ $failed = TRUE  ] && { echo FAILED; exit 1; }
 	exit 0
 fi
+
+for skip_folder in 'todo' 'TODO' 'doc' 'docs'; do
+	if [[ "$ARG_1" = */${skip_folder}/* ]]; then
+		echo "Skip file ${ARG_1}. /${skip_folder}/ in path."
+		exit 0
+	fi
+done
+
 
 if [ "$SYNTAX_STYLE" != "bash" ]; then
 	echo "not supported \"$SYNTAX_STYLE\" yet. plz add new style"
@@ -48,21 +58,26 @@ fi
 
 __SPACE=$' \t'
 __EMPTY=''
-F=$1
+F=$ARG_1
 [ ! -f "$F" ] && { echo "Error file $F not found"; exit 1; }
 
 if grep '^[#$__SPACE]* skip crab_syntax' "$F"; then
-	echo SKIP
+	echo SKIP1
 	exit 0
 fi
+SKIP_FILE="${F%/*}/.crab_syntax_skip"
+SHORT_NAME="${F##*/}"
 
+if [ -f "$SKIP_FILE" ] && grep -qw "^$SHORT_NAME\$" "$SKIP_FILE"; then
+	echo "grep $SHORT_NAME $SKIP_FILE SKIP2"
+	exit 0
+fi
 ERROR=0
-error_msg=""
 
 ALL_FUNCS=$( cat "$F" \
 	| grep '^.*()' \
 	| sed 's/^function //' \
-	| sed -n  's/^\(\S*\)().*{/\1/p' ) || true # '
+	| sed -n  's/^\s*\(\S*\)().*{/\1/p' ) || true # '
 
 declare -A F_LOCAL_VARS
 declare -A F_UNKNOWN_VARS
@@ -74,8 +89,12 @@ func_fill_body(){
 	local fname
 	for fname in $ALL_FUNCS; do
 		F_BODY[$fname]=$( grep -A 1000000 "^${fname}()[ ]*{" "$F" \
-			| grep -B100000 -m1 '^}' || true )
-		# "
+			| grep -B100000 -m1 '^}' || true ) # "
+		if [ -z "${F_BODY[$fname]}" ]; then
+			# частичная поддержка влолженных функций
+			F_BODY[$fname]=$( grep -P -A 1000000 "^[\s]*${fname}\(\)[\s]*{" "$F" \
+				| grep -P -B100000 -m1 '^[\s]*}' || true )
+		fi
 	done
 	return 0
 }
@@ -93,8 +112,9 @@ __is_local_var(){
 	return 0
 }
 __add_var(){
-	local var_name=$1 cur_fname=$2 __is_local_var_ret=
-	if [ "$cur_fname" = "" ]; then
+	local var_name=$1 cur_fname=$2 __is_local_var_ret= __is_declare=
+	grep -q "declare.*$var_name" "$F" && __is_declare=TRUE || __is_declare=FALSE
+	if [ "$cur_fname" = "" -o "$__is_declare" = TRUE ]; then
 		[[ " $GLOBAL_VAR_LIST " == *" $var_name "* ]] && return 0
 		GLOBAL_VAR_LIST="$GLOBAL_VAR_LIST $var_name"
 		return 0
@@ -112,7 +132,7 @@ __add_var(){
 }
 parse_variables(){
 	local var_name= cur_fname= line= is_local_declare=
-	local var= __is_local_var_ret= vars=
+	local var= __is_local_var_ret= vars= __is_declare=
 	while IFS='' read -r line; do
 		[[ "$line" == "#"* ]] && continue
 		[[ "${line//[$__SPACE]/}" == "'"* ]] && continue
@@ -165,22 +185,13 @@ parse_variables(){
 		var_name="${var_name##*$'\t'}"
 		[ "$var_name" = "" ] && continue
 		[[ " LANG IFS " == *" $var_name "* ]] && continue
-
-		if [ "$cur_fname" = "" ]; then
+		grep -q "declare.*$var_name" "$F" && __is_declare=TRUE || __is_declare=FALSE
+		if [ "$cur_fname" = "" -o "$__is_declare" = TRUE ]; then
 			[[ " $GLOBAL_VAR_LIST " == *" $var_name "* ]] && continue
 			GLOBAL_VAR_LIST="$GLOBAL_VAR_LIST $var_name"
 			continue
 		fi
 		continue
-
-		# [[ " ${F_LOCAL_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
-		# [[ " ${F_UNKNOWN_VARS[$cur_fname]:-} " == *" $var_name "* ]] && continue
-		# __is_local_var_ret=$( __is_local_var $var_name $cur_fname )
-		# if [ "${__is_local_var_ret}" = TRUE ]; then
-		#	F_LOCAL_VARS[$cur_fname]="${F_LOCAL_VARS[$cur_fname]:-} $var_name"
-		# else
-		#	F_UNKNOWN_VARS[$cur_fname]="${F_UNKNOWN_VARS[$cur_fname]:-} $var_name"
-		# fi
 	done < <( sed 's/^[ \t]*//' "$F" )
 	return 0
 }
@@ -202,6 +213,7 @@ echo_error(){
 	ERROR=$((ERROR+1))
 	echo -e "^^^ERROR $@"
 	echo
+	[ "${ARG_FAILSTOP:-}" = TRUE ] && exit 99
 	return 0
 }
 
@@ -221,7 +233,7 @@ strongbash001(){
 
 strongbash002(){
 	if ! head -n 10 "$F" | egrep -q '^(# )?set -eu' \
-		&& ! grep -q '::carbon.sys' "$F"; then
+		&& ! grep -q 'crab_sys.sh' "$F"; then
 		echo_error\
 			'strongbash002 Не установлен set -eu'
 	fi
@@ -229,7 +241,7 @@ strongbash002(){
 }
 
 strongbash003(){
-	egrep -n '^[^#].*(if|&&|\|\|).* \|\| true' "$F" &&\
+	egrep -n '^[^#]*[$__SPACE]*(if |\][ ]*&&|\|\|).* \|\| true' "$F" &&\
 		echo_error 'strongbash003 Нельзя использовать || true в условных выражениях'
 	return 0
 }
@@ -243,11 +255,12 @@ strongbash004(){
 strongbash005(){
 	### todo обрабатывать отдельно каждую функцию
 	local count_func count_end_return
-	count_func=$( grep '()[ ]*{' "$F" | wc -l || true ) # '
-	count_end_return=$( grep 'return\|exit' -A 1 "$F" | grep '^}' | wc -l || true )
+	count_func=$( echo -n "${ALL_FUNCS}" | wc -w ) # {
+	count_end_return=$( grep 'return\|exit' -A 1 "$F" | grep -P '^\s*}' | wc -l || true )
 	[ $count_func != $count_end_return ] \
 		&& echo_error \
-		'strongbash005 $count_func!=$count_end_return В конце каждой функции должен быть '\
+		'strongbash005 $count_func!=$count_end_return'" $count_func=$count_end_return"\
+		'В конце каждой функции должен быть '\
 		'return 0 или return $ret или exit'
 	return 0
 }
@@ -255,7 +268,7 @@ strongbash005(){
 strongbash006(){
 	if ! tail -n 2 "$F" | head -n 1 | grep -q '$0 $@ \[$$\] SUCCESS' \
 		|| ! grep -q '$0 $@ \[$$\] START' "$F" ; then
-		grep -q '::carbon.sys' "$F" && return 0
+		grep -q 'crab_sys.sh' "$F" && return 0
 		echo_error 'strongbash006 В начале каждого файла должен быть:
 		echo "$0 $@ [$$] START" >&2
 		BODY
@@ -269,10 +282,10 @@ strongbash006(){
 		# exit 0
 
 		или используйте:
-		. ::carbon.sys
+		. crab_sys.sh
 		BODY
 		exit 0
-		'
+		или для lib и include и микрофайлов: # skip strongbash header'
 	fi
 	return 0
 }
@@ -307,11 +320,12 @@ strongbash010(){
 		'глобальные переменные для временных файлов,' \
 		'лучше локальные local tt=/tmp/binname_tmpcat.$$' \
 		'или глобальный каталог mkdir -p $TMPDIR $TMPDIR/testfile.txt'
-	if egrep -q '^[^#]*rm.*/tmp/.*' "$F" && \
-		! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep -q '$$'; then
-		egrep -n 'rm.*/tmp/.*' "$F"
-		echo_error 'strongbash011 Нельзя использовать временные файлы без $$, '\
-			'лучше rm -f /tmp/binname_tmpcat.$$'
+	if egrep -q '^[^#]*rm.*/tmp/.*' "$F" \
+		&& ! egrep '^[^#]*rm.*/tmp/.*' "$F" | fgrep -q '$$' \
+		&& ! egrep -B 1 '^[^#]*rm.*/tmp/.*' "$F" | grep -q 'skip strongbash010'; then
+		echo_error 'strongbash010 Нельзя использовать временные файлы без $$, '\
+			'лучше rm -f /tmp/binname_tmpcat.$$'\
+			'в редких случаях # skip strongbash010 стокой выше'
 	fi
 	return 0
 }
@@ -358,12 +372,13 @@ MAX_FSIZE=64
 strongbash014(){
 	local fname fsize
 	for fname in $FUNCT_LIST; do
+		[[ "${F_BODY[$fname]}" == *"skip strongbash014"* ]] && continue
 		fsize="$( echo "${F_BODY[$fname]}" | grep -v "^[$__SPACE]*#.*" | wc -l || true )"
 		if (( $fsize > $MAX_FSIZE )); then
 			echo_error \
 				"strongbash014 Слишком большая функция $fname $fsize"\
 				"больше $MAX_FSIZE строк, "\
-				"выделите подфункции __fname"
+				"выделите подфункции $fname"
 
 		fi
 
@@ -372,16 +387,28 @@ strongbash014(){
 }
 
 strongbash015(){
-	local fcount avg_size
+	local fcount avg_size long_string_size echo_string_size __fcount fsize
+	grep -q "skip strongbash015" "$F" && return 0
 	fsize=$(cat "$F" | wc -l )
 	fcomm_size=$( grep "^[$__SPACE]*#.*" "$F" | wc -l || true )
+	# смягчаем для шаблонов и конфигураторов
+	long_string_size=$( grep "^[$__SPACE]*[\"'] " "$F" | wc -l || true )
+	# смягчаем для шаблонов и конфигураторов
+	echo_string_size=$( grep "^[$__SPACE]*echo " "$F" | wc -l || true )
+	[ $long_string_size -ge 2 ] && long_string_size=$((long_string_size-1))
+	[ $echo_string_size -ge 2 ] && echo_string_size=$((echo_string_size-1))
 	fcount=$( grep '()[ ]*{*' "$F" | wc -l || true ) # ' #}
-	[ "$fcount" -gt 1 ] && fcount=$(( fcount/2 )) # 32 строк на ф
-	avg_size=$(((fsize-fcomm_size)/(1+fcount)))
+	[ $fcount -gt 1 ] && __fcount=$((fcount/2)) || __fcount=fcount # 32 line per func
+	avg_size=$(((fsize-fcomm_size-long_string_size-echo_string_size)/(1+__fcount)))
 	if [[ "$avg_size" -gt "$MAX_FSIZE" ]]; then
 		echo_error \
-			"strongbash015 Слишком большой линейный файл" \
-			"$(((fsize-fcomm_size)/fcount)) больше $MAX_FSIZE строк, "\
+			"strongbash015 Слишком большой линейный файл,"\
+			" мало функций=$((fcount))"\
+			" fsize($fsize)"\
+			"-echo_string_size($echo_string_size)"\
+			"-long_string_size($long_string_size)"\
+			" avg_lines_count = $avg_size"\
+			" больше $MAX_FSIZE строк, "\
 			"разбейте на функции"
 	fi
 	return 0
@@ -397,18 +424,23 @@ MAX_CHARS=100
 strongbash017(){
 	local line=
 	while IFS='' read -r line; do
+		[ "${line:0:3}" = '###' ] && continue
 		if [ "${#line}" -gt $MAX_CHARS ]; then
 			echo "$line"
 			echo_error \
 				"strongbash017 длина строки больше $MAX_CHARS используйте перенос \\ "\
-				"примеры переносов:\necho_suc \"aaaaaaaaaaaaaaaaaa\"\\ \n\"bbbbbbbb\" "
+				"примеры переносов:"\
+				"\nВариант 1"\
+				"\necho_suc \"aaaaaaaaaaaaaaaaaa\" \\ \n         \"bbbbbbbb\" "\
+				"\nВариант 2"\
+				"\necho_suc \\ \n\"aaaaaaaaaaaaaaaaaa\\ \nbbbbbbbb\" "
 		fi
 	done < "$F"
 	return 0
 }
 
 strongbash018(){
-	egrep -n  "^[$__SPACE]*[^#$__SPACE]+.*[^ 0-9)&>}$__SPACE]>[ ]*+[^ \$\"'[]+"  "$F" \
+	egrep -n  "^[$__SPACE]*[^#$__SPACE]+[^<]*[^ 0-9)&>}$__SPACE]>[ ]*+[^ \$\"'[]+" "$F" \
 		&& echo_error 'strongbash018 поставьте пробел перед "text >oo"'
 	return 0
 }
@@ -525,7 +557,7 @@ strongbash022_2(){
 }
 
 strongbash023_1(){
-	if grep -P -n '^([^#].*\s|)read(?!.*-r).*' "$F"; then
+	if grep -P -n '^([^#].*\s|)read (?!.*-r).*' "$F"; then
 		echo_error "strongbash023_1"\
 			'нужно всегда использовать read -r f1 f2'
 	fi
@@ -543,30 +575,37 @@ strongbash023_2(){
 strongbash024_1(){
 	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"[.]*\/\$' "$F"; then
 		echo_error "strongbash024_1"\
-			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"'
+			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
+		чтобы не удалить корень
+		используейте r''m -rf "$dir" или r''m -rf "$dir/sub1"'
 	fi
 	return 0
 }
 
 strongbash024_2(){
-	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*\w[*]' "$F"; then
+	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*[*]' "$F"; then
 		echo_error "strongbash024_2"\
-			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"'
+			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
+		чтобы не удалить корень
+		используейте r''m -rf "$dir" или r''m -rf "$dir/sub1"'
 	fi
 	return 0
 }
 strongbash024_3(){
-	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$\S*\/' "$F"; then
+	if grep -P -n '^(?![#]).*rm -r[f]*\s.*"\$[^/]*\/"' "$F"; then
 		echo_error "strongbash024_3"\
-			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"'
+			'Запрещено r''m -rf "/$dir" "./$dir" "$dir*" "$dir/*" "$dir/"
+		чтобы не удалить корень
+		используейте r''m -rf "$dir" или r''m -rf "$dir/sub1"'
 	fi
 	return 0
 }
 
 strongbash024_4(){
-	if grep -n -P '^(?![#])rm(?!.*-one-file-system.*).*-r.*' "$F"; then
+	if grep -n -P '^(?![#])rm(?!.*-one-file-system.*).* -r.*' "$F"; then
 		echo_error "strongbash024_4"\
-			'Запрещено r''m -rf без -one-file-system '
+			'Запрещено r''m -rf без --one-file-system
+		чтобы не удалить корень или --bind'
 	fi
 	return 0
 }
@@ -586,7 +625,8 @@ strongbash026(){
 }
 
 strongbash027(){
-	if grep -P -n '^(?!(.*if|[^\|]*&&))[^#].*\S+\s*\|\|[ ](?!.*true).*' "$F"; then
+	if grep -P -n '^(?!(.*if|[^\|]*&&))[^#].*\S+\s*\|\|[ ](?!.*(true|continue|exit|break|return)).*'\
+		"$F"; then
 		echo_error \
 "strongbash027 нельзя использовать конструкции вида [ a = b ] |$__EMPTY| cmd1
 и cmd1 |$__EMPTY| cmd2
@@ -634,7 +674,7 @@ strongbash030_2(){
 	local fname
 	for fname in $ALL_FUNCS; do
 		if egrep -n "(^|.*\W)$fname[ ]*\|\|.*" "$F" ; then
-			echo_error "strongbash030_2 нельзя использовать $fname |$__EMPTY| cmd1"
+			echo_error "strongbash030_2 нельзя использовать функция $fname |$__EMPTY| cmd1"
 		fi
 	done
 	return 0
@@ -644,7 +684,7 @@ strongbash030_3(){
 	local fname
 	for fname in $ALL_FUNCS; do
 		if egrep -n ".*if.*\s$fname\W+.*" "$F" ; then
-			echo_error "strongbash030_3 нельзя использовать if $fname; then"
+			echo_error "strongbash030_3 нельзя использовать функция if $fname; then"
 		fi
 	done
 	return 0
@@ -690,7 +730,7 @@ strongbash033_2(){
 				grep -q "skip strongbash033.*$var" "$F" && continue
 				echo_error \
 "strongbash033_2 в функции $fname переменная $var не объявлена как local
-или для внешних, как declare в начале файла
+или для внешних, в начале файла \ndeclare $var
 или для совместимости со старым кодом: # skip strongbash033 \$var \$$var \$var2"
 				# echo "F_BODY = ${F_BODY[$fname]}"
 				# echo "${F_UNKNOWN_VARS[$fname]:-}"
@@ -737,7 +777,11 @@ __check_pipebreak(){
 		echo "$line"
 		echo "^^^"
 		echo_error \
-"strongbash034_1 Будьте осторожны, использование grep -q grep -m 1 head tail
+"strongbash034_1 Будьте осторожны, использование
+grep -q
+grep -m 1
+head
+tail
 вместе с set -o pipefail
 приведет к разрыву левой части pipe и остановке команды \"$cmd\"
 Если нормальное завершение этой команды необязательно,
@@ -881,7 +925,12 @@ strongbash035(){
 }
 
 self_skip='strongbash021_1 strongbash021_2 strongbash021_3 strongbash021_4 strongbash021_5'
-if [ $maybe == 1 ]; then
+if fgrep -q '# skip strongbash header' "$F"; then
+	skip_strongbash_header=TRUE
+else
+	skip_strongbash_header=FALSE
+fi
+if [ "${ARG_MAYBE:-}" = TRUE ]; then
 	strongbash001
 	strongbash002
 	strongbash006
@@ -891,11 +940,15 @@ else
 		if [[ "${F##*/}" == "crab_syntax" ]]; then
 			[[ " $self_skip " == *" $check "* ]] && continue
 		fi
+		header_checks="strongbash006 strongbash007 strongbash008 strongbash019 strongbash032"
+		if [ "$skip_strongbash_header" = TRUE ]\
+			&& [[ " $header_checks " == *" $check "* ]]; then
+			continue
+		fi
 		# echo $check # time $check
 		$check
 	done
 fi
 
-[ "$error_msg" != "" ]  && echo -e "$error_msg"
 [ $ERROR != 0  ] && { echo FAILED; exit 1; }
 exit 0

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -euE
+
+# echo "$0 $@ [$$] START" >&2
+
+if [ "${1:-}" == '--help' ]; then
+	echo "Info: $0 - утилита для того и этого."
+	echo "Usage: $0 [--help|--флаг1|--флаг2|--флаг3]"
+	echo "Example: $0 --флаг1 - делает то-то и то-то"
+	exit 0
+fi
+
+func1() {
+	set -e
+	return 0
+}
+
+main() {
+	func1
+	return 0
+}
+
+main "$@"
+# echo "$0 $@ [$$] SUCCESS" >&2
+exit 0

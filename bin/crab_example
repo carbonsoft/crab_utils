@@ -2,7 +2,7 @@
 
 set -eu
 __SILENT=TRUE
-. /opt/crab/crab_utils/bin/::carbon.sys
+. /opt/crab/crab_utils/bin/crab_sys.sh
 
 sys::usage "$@"
 # --help Info:
@@ -16,24 +16,25 @@ sys::usage "$@"
 
 
 if [ "${1}" == "update" ]; then
-
+	mkdir -p /tmp/.carbon_example
 	echo 0 > /tmp/.carbon_example/lastupdate
 fi
 
 update(){
 	local page url example_pages
-	wget http://opencarbon.ru/example:example_index -O /tmp/crab_example_index.$$ &>/dev/null
+	wget --no-check-certificate https://dev7.cloudfox.com/example:example_index \
+		-O /tmp/crab_example_index.$$ &>/dev/null
 	example_pages=$( grep href /tmp/crab_example_index.$$ | grep example:example \
 		| grep 'class="wikilink1"' | grep -v start \
 		| grep -v example_index | sed -n 's/.*href="\/\([^"]*\).*/\1/p' )
 	rm -f /tmp/crab_example_index.$$
 	for page in $example_pages; do
-		echo "http://www.opencarbon.ru/?do=export_raw&id=${page}"
+		echo "https://dev7.cloudfox.com/?do=export_raw&id=${page}"
 	done > "$HOME/.carbon_example.urls"
 	touch "$HOME/.carbon_example_custom.urls"
 	rm -f /tmp/.carbon_example/*
 	for url in $(<$HOME/.carbon_example.urls) $(<$HOME/.carbon_example_custom.urls); do
-		wget $url -O /tmp/crab_example_wget_out.$$ 2>/dev/null
+		wget --no-check-certificate $url -O /tmp/crab_example_wget_out.$$ 2>/dev/null
 		cat /tmp/crab_example_wget_out.$$ \
 			| grep -v '^<code ' | grep -v '^</code>' \
 			| sed 's/===.*//' > "/tmp/.carbon_example/${url//\//_}"

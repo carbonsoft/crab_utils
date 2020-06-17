@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -eu
-. /opt/crab/crab_utils/bin/::carbon.sys
+. /opt/crab/crab_utils/bin/crab_sys.sh
 
 [ "${1:-}" = "--help" ] && sys::usage "$@"
 # --help Info: обновляет все краб пакеты /opt/crab/*
@@ -46,9 +46,23 @@ git_update(){
 				echo "all modified files moved to /opt/crab.$$/" >/opt/crab/README.$$
 			fi
 			git reset --hard
+			if [ "$repo" == "/opt/crab/crab_utils" ]; then
+				if ping -i 2 -c 1 github.com; then
+					git pull "https://github.com/carbonsoft/crab_utils.git" master \
+						|| true
+					git reset --hard
+					continue
+				else
+					continue
+				fi
+			fi
 			if [ "$repo" == "/opt/crab/crab_devops" ]; then
-				git remote rm origin
-				git remote add origin http://gitrd.carbonsoft.ru/devops/crab_devops.git
+				if ping -i 2 -c 1 gitrd.carbonsoft.ru; then
+					git remote rm origin
+					git remote add origin "http://gitrd.carbonsoft.ru/devops/crab_devops.git"
+				else
+					continue
+				fi
 			fi
 			git pull origin master
 			git reset --hard
@@ -62,4 +76,5 @@ mkdir -p /opt/crab/
 git_update
 create_symlink
 configure_mc
+/opt/crab/crab_utils/bin/crab_example update
 exit 0
