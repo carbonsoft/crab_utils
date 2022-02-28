@@ -22,14 +22,14 @@ fi
 
 update(){
 	local page url example_pages
-	wget --no-check-certificate https://dev7.cloudfox.com/example:example_index \
+	wget --no-check-certificate https://opencarbon.ru/example:example_index \
 		-O /tmp/crab_example_index.$$ &>/dev/null
 	example_pages=$( grep href /tmp/crab_example_index.$$ | grep example:example \
 		| grep 'class="wikilink1"' | grep -v start \
 		| grep -v example_index | sed -n 's/.*href="\/\([^"]*\).*/\1/p' )
 	rm -f /tmp/crab_example_index.$$
 	for page in $example_pages; do
-		echo "https://dev7.cloudfox.com/?do=export_raw&id=${page}"
+		echo "https://opencarbon.ru/?do=export_raw&id=${page}"
 	done > "$HOME/.carbon_example.urls"
 	touch "$HOME/.carbon_example_custom.urls"
 	rm -f /tmp/.carbon_example/*
