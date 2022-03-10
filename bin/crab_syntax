@@ -484,6 +484,7 @@ LIST_TMPVAR2=$( grep -P '^\s*\w*=.*[(`]\s*mktemp.*' "$F" \
 
 GREP_LIST_TMPVAR="$LIST_TMPVAR1 $LIST_TMPVAR2"
 GREP_LIST_TMPVAR="${GREP_LIST_TMPVAR//[ $'\n']/|}"
+[ "${GREP_LIST_TMPVAR}" == "|" ] && GREP_LIST_TMPVAR=''
 
 strongbash021_1(){
 	if grep -n -P 'trap.*rm.*tmp.*(EXIT|0).*' "$F"; then
@@ -493,6 +494,7 @@ strongbash021_1(){
 }
 
 strongbash021_2(){
+	[ -z "${GREP_LIST_TMPVAR}" ] && return 0
 	if grep -n -P "trap.*rm.*($GREP_LIST_TMPVAR).*(EXIT|0).*" "$F"; then
 		echo_error "strongbash021_2 запрещено удалять tmp в trap EXIT"
 	fi
@@ -513,6 +515,7 @@ strongbash021_3(){
 
 strongbash021_4(){
 	local func
+	[ -z "${GREP_LIST_TMPVAR}" ] && return 0
 	for func in $ALL_FUNCS; do
 		if grep -q "trap.*$func.*" "$F"; then
 			if echo "${F_BODY[$func]}" \
