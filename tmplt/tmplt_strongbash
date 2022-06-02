@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -eu
+
+. /opt/crab/crab_utils/bin/crab_sys.sh
+
+sys::usage "$@"
+# --help Info:
+# --help Опишите что это за утилита
+# --help Usage:
+# --help имя утилиты возможные|значения|параметра [--опц-ный-флаг] [--level=0|1]
+# --help Example:
+# --help имя_утилиты набор --флагов -- что сделает
+# --help имя_утилиты больше --level=1
+
+sys::arg_parse "$@"
+
+main() {
+	echo $ARG_1
+	echo $ARG_LEVEL
+	return 0
+}
+
+main "$@"
+exit 0
