@@ -1,8 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """ TODO: опишите, что это за скрипт """
 # coding: utf-8
 
 import argparse
+import logging
 
 
 def parse_args():
@@ -10,9 +11,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.description = "Опишите, что делает утилита"
     parser.add_argument('-o', '--option', default=1, type=int, help='Описание опции')
-    parser.add_argument('--flag', action='store_true', default=True, help="Описание флага.")
-    parser.add_argument('--no-flag', action='store_false', default=False, dest="flag",
-                        help="Описание флага.")
+    parser.add_argument('--debug', action='store_true', default=False, help="Включить отладочное логирование.")
+    parser.add_argument('--silent', action='store_true', default=False, help="Оставить только warning/error логи.")
     return parser.parse_args()
 
 
@@ -22,6 +22,8 @@ def func1(args):
 
 def main():
     args = parse_args()
+    logging.basicConfig(level=(logging.DEBUG if args.debug else logging.WARNING if args.silent else logging.INFO),
+                        format="[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s")
     func1(args)
 
 
