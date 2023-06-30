@@ -4,6 +4,9 @@ set -eu
 
 echo "$0 $@ [$$] START" >&2
 
+# sometimes reject push from jenkins, maybe locale issue.
+export LC_ALL=en_US.UTF-8
+
 # Magic check disabling
 if [ -f /etc/git_secure_salt ]; then
 	MAGIC_SALT=$(</etc/git_secure_salt)  # или сделать конфиг.
